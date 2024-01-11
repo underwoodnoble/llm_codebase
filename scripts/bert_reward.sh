@@ -4,8 +4,8 @@ export CUDA_VISIBLE_DEVICES=0
 python3 ${REPO_DIR}/src/main.py \
     --task_type reward \
     --do_train True \
-    --data_path ${DATA_DIR}/helpful.train.json \
-    --eval_data_path ${DATA_DIR}helpful.test.json \
+    --data_paths ${DATA_DIR}/helpful.train.json \
+    --eval_data_paths ${DATA_DIR}helpful.test.json \
     --preference_data_texts_name text \
     --preference_data_scores_name score \
     --model_name_or_path model_name_or_path \

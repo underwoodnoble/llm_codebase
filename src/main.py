@@ -1,22 +1,24 @@
 from arguments import CustomArguments
-from transformers import HfArgumentParser, BertForSequenceClassification, BertTokenizer, BertConfig
+from transformers import HfArgumentParser, BertForSequenceClassification, \
+    BertTokenizer, BertConfig, LlamaForSequenceClassification, LlamaConfig, LlamaTokenizer
+
 from trainer import RewardModelTrainer
 from utils import print_rank_0, load_data_from_paths
 from datasets import Dataset
 from collator import reward_data_collator
-from metrics import compute_reward_metrics2
+from metrics import compute_reward_metrics
 import os
 
 
 def getDataset(args: CustomArguments, type='train'):
     if type == 'train':
-        if args.data_path is not None:
-            data_paths = [args.data_path]
+        if args.data_paths is not None:
+            data_paths = args.data_paths
         else:
             data_paths = [os.path.join(args.data_dir, path) for path in os.listdir(args.data_dir)]
     else:
-        if args.eval_data_path is not None:
-            data_paths = [args.eval_data_path]
+        if args.eval_data_paths is not None:
+            data_paths = args.eval_data_paths
         else:
             data_paths = [os.path.join(args.eval_data_dir, path) for path in os.listdir(args.eval_data_dir)]       
     data_list = load_data_from_paths(data_paths)
@@ -44,6 +46,12 @@ def loadTokenizerAndModel(args: CustomArguments):
             tokenizer = BertTokenizer.from_pretrained(args.model_name_or_path, truncation_side=args.truncation_side)
             tokenizer.model_max_length = args.model_max_length
             model = BertForSequenceClassification.from_pretrained(args.model_name_or_path, config=config)
+        elif args.model_type == 'llama':
+            config = LlamaConfig.from_pretrained(args.model_name_or_path)
+            config.num_labels = 1
+            tokenizer = LlamaTokenizer.from_pretrained(args.model_name_or_path, truncation_side=args.truncation_side)
+            tokenizer.model_max_length = args.model_max_length
+            model = LlamaForSequenceClassification.from_pretrained(args.model_name_or_path, config=config)
     
     return tokenizer, model
 
@@ -70,7 +78,7 @@ def main():
             train_dataset=train_dataset,
             eval_dataset=eval_dataset,
             data_collator=reward_data_collator(tokenizer),
-            compute_metrics=compute_reward_metrics2
+            compute_metrics=compute_reward_metrics
             )
     trainer.train()
 
