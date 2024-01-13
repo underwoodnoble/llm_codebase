@@ -38,4 +38,4 @@ def load_data_from_paths(data_paths: str):
     print_rank_0(f">>> total load {len(total_data_list)} data.")
     return total_data_list
 
-    
+

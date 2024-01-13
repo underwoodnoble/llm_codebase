@@ -1,7 +1,7 @@
 from arguments import CustomArguments
 from transformers import HfArgumentParser, BertForSequenceClassification, \
     BertTokenizer, BertConfig, LlamaForSequenceClassification, LlamaConfig, LlamaTokenizer
-
+from model.reward_model.llama_reward import LlamaRewardModel
 from trainer import RewardModelTrainer
 from utils import print_rank_0, load_data_from_paths
 from datasets import Dataset
@@ -47,11 +47,12 @@ def loadTokenizerAndModel(args: CustomArguments):
             tokenizer.model_max_length = args.model_max_length
             model = BertForSequenceClassification.from_pretrained(args.model_name_or_path, config=config)
         elif args.model_type == 'llama':
-            config = LlamaConfig.from_pretrained(args.model_name_or_path)
-            config.num_labels = 1
             tokenizer = LlamaTokenizer.from_pretrained(args.model_name_or_path, truncation_side=args.truncation_side)
             tokenizer.model_max_length = args.model_max_length
-            model = LlamaForSequenceClassification.from_pretrained(args.model_name_or_path, config=config)
+            tokenizer.pad_token_id = tokenizer.eos_token_id
+            model = LlamaRewardModel.from_pretrained(args.model_name_or_path)
+            model.config.pad_token_id = tokenizer.eos_token_id
+            
     
     return tokenizer, model
 
@@ -64,10 +65,15 @@ def main():
     if args.do_train:
         train_dataset = getDataset(args, type='train')
     eval_dataset = getDataset(args, type='eval')
+    print_rank_0(">"*10 + "training set")
     print_rank_0(train_dataset)
+    print_rank_0(">"*10 + "evaluation set")
     print_rank_0(eval_dataset)
 
     tokenizer, model = loadTokenizerAndModel(args)
+    print_rank_0(">"*10 + "tokenizer")
+    print_rank_0(tokenizer)
+    print_rank_0(">"*10 + "model")
     print_rank_0(model)
 
     if args.task_type == 'reward':

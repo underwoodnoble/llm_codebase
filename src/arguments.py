@@ -25,11 +25,15 @@ class CustomArguments(transformers.TrainingArguments):
     # training arguments
     truncation_side: Optional[str] = field(default='left', metadata={"help": "which side to truncate when sequence is too long."})
     padding_side: Optional[str] = field(default='right', metadata={"help": "which side to padding."})
+    add_lm_loss: Optional[bool] = field(default=True, metadata={"help": "add language model loss when training reward model"})
+    lm_loss_coeff: Optional[float] = field(default=0., metadata={"help": "the coefficient for language modeling loss."})
+    lm_score_thresh: Optional[float] = field(default=0.85, metadata={"help": "the threshold to select response for language modeling."})
+
 
 
     def __post_init__(self):
         super().__post_init__()
-        valid_task_types = ["reward"]
+        valid_task_types = ["reward", "sft"]
         if self.task_type not in valid_task_types:
             raise ValueError(f"Invalid task type. Expected one of {valid_task_types}, but got {self.task_type}")
 

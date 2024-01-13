@@ -22,6 +22,25 @@ def ranking_loss(logits: torch.Tensor, scores: torch.Tensor):
     total_pairs = total_mask.sum()
     return total_loss / total_pairs if total_pairs > 0 else total_loss
 
+def lm_loss(lm_logits: torch.Tensor, input_ids: torch.Tensor, scores: torch.Tensor, loss_mask: torch.Tensor, score_thresh=0.9, eps=1e-7):
+    """Compute language model loss
+    lm_logits: torch.Tensor shape: (batch_size*num_sample, seq_len, vocab_size)
+    input_ids: torch.Tensor shape: (batch_size*num_sample, seq_len)
+    loss_mask: torch.Tensor shape: (batch_size*num_sample, seq_len)
+    scores: torch.Tensor shape: (batch_size, num_sample)
+    """
+    b_n, _, vocab_size = lm_logits.shape
+
+    token_ce_loss = nn.functional.cross_entropy(
+        input=lm_logits[:, :-1, :].reshape(-1, vocab_size),
+        target=input_ids[:, 1:].reshape(-1),
+        reduction="none"
+    ).view(b_n, -1) # (b_n, seq_len-1)
+
+    sentence_ce_loss = (token_ce_loss * loss_mask[:, 1:].float()).sum(dim=1) / loss_mask[:, 1:].float().sum(dim=1) # (b_n)
+    score_mask = (scores.reshape(-1) > score_thresh).float()
+    return (sentence_ce_loss * score_mask).sum() / (score_mask.sum() + eps)
+
 class RewardModelTrainer(Trainer):
     def compute_loss(self, model: nn.Module, inputs: Dict[str, torch.Tensor], return_outputs=False):
         device = model.device
@@ -31,14 +50,23 @@ class RewardModelTrainer(Trainer):
         batch_size, num_sample = scores.shape
 
         outputs = model(input_ids=input_ids.reshape(batch_size*num_sample, -1), attention_mask=attention_mask.reshape(batch_size*num_sample, -1))
-        logits: torch.Tensor = outputs.logits # shape: (batch_size*num_sample, 1)
-        logits = logits.view(batch_size, num_sample)
-
-        rl = ranking_loss(logits, scores)
-        if model.config.model_type == 'bert':
+        if self.args.model_type == 'bert':
+            logits: torch.Tensor = outputs.logits # shape: (batch_size*num_sample, 1)
+            logits = logits.view(batch_size, num_sample)
+            rl = ranking_loss(logits, scores)
             total_loss = rl
         else:
-            pass
+            logits: torch.Tensor = outputs['rm_logits']
+            logits = logits.view(batch_size, num_sample)
+            rl = ranking_loss(logits, scores)
+            total_loss = rl
+
+            if self.args.add_lm_loss:
+                lm_logits: torch.Tensor = outputs['lm_logits'] # shape: (batch_size*num_sample, seq_length, vocab_size)
+                lml = lm_loss(lm_logits, input_ids.view(batch_size*num_sample, -1), 
+                              scores, attention_mask.view(batch_size * num_sample, -1), self.args.lm_score_thresh)
+
+                total_loss += self.args.lm_loss_coeff * lml
 
         return (total_loss, logits) if return_outputs else total_loss
 
