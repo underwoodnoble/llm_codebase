@@ -1,6 +1,6 @@
 compute_environment: LOCAL_MACHINE
 deepspeed_config:
-  deepspeed_config_file: configs/llama7b_reward/deepspeed_zero3.json
+  deepspeed_config_file: configs/alpaca_rjs/deepspeed_zero3.json
   zero3_init_flag: true
 distributed_type: DEEPSPEED
 fsdp_config: {}

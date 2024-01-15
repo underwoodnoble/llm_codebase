@@ -1,11 +1,11 @@
 from arguments import CustomArguments
 from transformers import HfArgumentParser, BertForSequenceClassification, \
-    BertTokenizer, BertConfig, LlamaForSequenceClassification, LlamaConfig, LlamaTokenizer
-from model.reward_model.llama_reward import LlamaRewardModel
+    BertTokenizer, BertConfig, LlamaForSequenceClassification, LlamaConfig, LlamaTokenizer, LlamaForCausalLM, Trainer
+from model.reward_model import LlamaRewardModel
 from trainer import RewardModelTrainer
-from utils import print_rank_0, load_data_from_paths
+from utils import print_rank_0, load_data_from_paths, set_llama_special_token
 from datasets import Dataset
-from collator import reward_data_collator
+from collator import reward_data_collator, sft_data_collator, rjs_data_collator, rrhf_data_collator
 from metrics import compute_reward_metrics
 import os
 
@@ -23,8 +23,8 @@ def getDataset(args: CustomArguments, type='train'):
             data_paths = [os.path.join(args.eval_data_dir, path) for path in os.listdir(args.eval_data_dir)]       
     data_list = load_data_from_paths(data_paths)
 
-    if args.task_type == 'reward':
-        # transform to data: {"texts": ["text1", "text2"], "scores": [s1, s2]}
+    if args.task_type in ['reward', "offline_rejection_sampling", "offline_RRHF"]:
+        # transform to the format: {"texts": ["text1", "text2"], "scores": [s1, s2]}
         if args.preference_data_texts_name != 'texts' or args.preference_data_scores_name != 'scores':
             new_data_list = []
             for data in data_list:
@@ -33,7 +33,18 @@ def getDataset(args: CustomArguments, type='train'):
                     "scores": data[args.preference_data_scores_name]
                 }
                 new_data_list.append(new_data)
-        data_list = new_data_list
+            data_list = new_data_list
+
+    if args.task_type == 'sft':
+        if args.sft_data_prompt_name != 'prompt' or args.sft_data_answer_name != 'answer':
+            new_data_list = []
+            for data in data_list:
+                new_data = {
+                    "prompt": data[args.sft_data_prompt_name],
+                    "answer": data[args.sft_data_answer_name]
+                }
+                new_data_list.append(new_data)
+            data_list = new_data_list
     
     return Dataset.from_list(data_list)
     
@@ -47,12 +58,18 @@ def loadTokenizerAndModel(args: CustomArguments):
             tokenizer.model_max_length = args.model_max_length
             model = BertForSequenceClassification.from_pretrained(args.model_name_or_path, config=config)
         elif args.model_type == 'llama':
-            tokenizer = LlamaTokenizer.from_pretrained(args.model_name_or_path, truncation_side=args.truncation_side)
+            tokenizer = LlamaTokenizer.from_pretrained(args.model_name_or_path, truncation_side=args.truncation_side, padding_side=args.padding_side)
             tokenizer.model_max_length = args.model_max_length
-            tokenizer.pad_token_id = tokenizer.eos_token_id
             model = LlamaRewardModel.from_pretrained(args.model_name_or_path)
-            model.config.pad_token_id = tokenizer.eos_token_id
-            
+            set_llama_special_token(tokenizer, model)
+        else:
+            raise ValueError(f"Training reward model do not support the model type {args.model_type}.")
+    elif args.task_type in ['sft', 'offline_reject_sampling', "offline_RRHF"]:
+        if args.model_type == 'llama':
+            tokenizer = LlamaTokenizer.from_pretrained(args.model_name_or_path, truncation_side=args.truncation_side, padding_side=args.padding_side)
+            tokenizer.model_max_length = args.model_max_length
+            model = LlamaForCausalLM.from_pretrained(args.model_name_or_path)
+            set_llama_special_token(tokenizer, model)
     
     return tokenizer, model
 
@@ -86,6 +103,26 @@ def main():
             data_collator=reward_data_collator(tokenizer),
             compute_metrics=compute_reward_metrics
             )
+    elif args.task_type in ['sft', 'offline_reject_sampling', 'offline_RRHF']:
+        if args.task_type == 'sft':
+            print_rank_0("Using sft data collator")
+            data_collator = sft_data_collator(tokenizer, args)
+        elif args.task_type == 'offline_reject_sampling':
+            print_rank_0("Using reject sampling data collator")
+            data_collator = rjs_data_collator(tokenizer, args)
+        elif args.task_type == 'offline_RRHF':
+            print_rank_0("Using RRHF data collator")
+            data_collator = rrhf_data_collator(tokenizer, args)
+
+        trainer = Trainer(
+            model=model,
+            tokenizer=tokenizer,
+            args=args,
+            train_dataset=train_dataset,
+            eval_dataset=eval_dataset,
+            data_collator=data_collator
+        )
+
     trainer.train()
 
 if __name__ == '__main__':

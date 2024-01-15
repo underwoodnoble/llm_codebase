@@ -15,25 +15,39 @@ class CustomArguments(transformers.TrainingArguments):
     eval_data_dir: str = field(default=None, metadata={"help": "the directory to load evaluation datasets."})
     eval_data_paths: List[str] = field(default=None, metadata={"help": "evaluation dataset paths."})
 
+    sft_data_prompt_name: Optional[str] = field(default='prompt', metadata={"help": "prompt name."})
+    sft_data_answer_name: Optional[str] = field(default='answer', metadata={"help": "answer name"})
+
+    preference_data_texts_name: Optional[str] = field(default='texts', metadata={"help": "key in preference data that indicate texts"})
+    preference_data_scores_name: Optional[str] = field(default="scores", metadata={"help": "key in preference data that indicate scores"})
+
     # model arguments
     model_type: Optional[str] = field(default='bert', metadata={"help": "base model to use."})
     model_name_or_path: Optional[str] = field(default=None, metadata={"help": "pretrained model path"})
-    preference_data_texts_name: Optional[str] = field(default='texts', metadata={"help": "key in preference data that indicate texts"})
-    preference_data_scores_name: Optional[str] = field(default="scores", metadata={"help": "key in preference data that indicate scores"})
     model_max_length: Optional[str] = field(default=512, metadata={"help": "the max sentence sequence length."})
+    ignore_token_id: Optional[str] = field(default=-100, metadata={"help": "token id used to inplace query ids."})
     
+
     # training arguments
     truncation_side: Optional[str] = field(default='left', metadata={"help": "which side to truncate when sequence is too long."})
     padding_side: Optional[str] = field(default='right', metadata={"help": "which side to padding."})
+
+    ## Reward model training arguments
     add_lm_loss: Optional[bool] = field(default=True, metadata={"help": "add language model loss when training reward model"})
     lm_loss_coeff: Optional[float] = field(default=0., metadata={"help": "the coefficient for language modeling loss."})
     lm_score_thresh: Optional[float] = field(default=0.85, metadata={"help": "the threshold to select response for language modeling."})
+
+    ## Language Model Training Arguments
+    only_predict_answer: Optional[bool] = field(default=True, metadata={"help": "Only predict the answer."})
+
+    ## Preference alignment training arguments
+    sep_token: Optional[str] = field(default=None, metadata={"help": "the token that can use to seperate the query and answer in preference data"})
 
 
 
     def __post_init__(self):
         super().__post_init__()
-        valid_task_types = ["reward", "sft"]
+        valid_task_types = ["reward", "classification", "sft", "offline_rejection_sampling", "offline_RRHF"]
         if self.task_type not in valid_task_types:
             raise ValueError(f"Invalid task type. Expected one of {valid_task_types}, but got {self.task_type}")
 
