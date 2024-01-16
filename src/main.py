@@ -34,8 +34,7 @@ def getDataset(args: CustomArguments, type='train'):
                 }
                 new_data_list.append(new_data)
             data_list = new_data_list
-
-    if args.task_type == 'sft':
+    elif args.task_type == 'sft':
         if args.sft_data_prompt_name != 'prompt' or args.sft_data_answer_name != 'answer':
             new_data_list = []
             for data in data_list:
@@ -124,6 +123,7 @@ def main():
         )
 
     trainer.train()
+    trainer.save_model(args.output_dir)
 
 if __name__ == '__main__':
     main()
