@@ -2,10 +2,10 @@ from arguments import CustomArguments
 from transformers import HfArgumentParser, BertForSequenceClassification, \
     BertTokenizer, BertConfig, LlamaForSequenceClassification, LlamaConfig, LlamaTokenizer, LlamaForCausalLM, Trainer
 from model.reward_model import LlamaRewardModel
-from trainer import RewardModelTrainer
+from trainer import RewardModelTrainer, ContrastiveTrainer
 from utils import print_rank_0, load_data_from_paths, set_llama_special_token
 from datasets import Dataset
-from collator import reward_data_collator, sft_data_collator, rjs_data_collator, rrhf_data_collator
+from collator import reward_data_collator, sft_data_collator, rjs_data_collator, rrhf_data_collator, contrastive_data_collator
 from metrics import compute_reward_metrics
 import os
 
@@ -44,6 +44,15 @@ def getDataset(args: CustomArguments, type='train'):
                 }
                 new_data_list.append(new_data)
             data_list = new_data_list
+    elif args.task_type == 'contrastive_learning':
+        if args.contrastive_data_prompt_name != 'prompt' or args.contrastive_data_answer_name != 'answer' or args.contrastive_data_score_name != 'score':
+            new_data_list = []
+            for data in data_list:
+                new_data = {
+                    "prompt": data[args.contrastive_data_prompt_name],
+                    "answer": data[args.contrastive_data_answer_name],
+                    "score": data[args.contrastive_data_score_name]
+                }
     
     return Dataset.from_list(data_list)
     
@@ -63,7 +72,7 @@ def loadTokenizerAndModel(args: CustomArguments):
             set_llama_special_token(tokenizer, model)
         else:
             raise ValueError(f"Training reward model do not support the model type {args.model_type}.")
-    elif args.task_type in ['sft', 'offline_reject_sampling', "offline_RRHF"]:
+    elif args.task_type in ['sft', 'offline_rejection_sampling', "offline_RRHF", 'contrastive_learning']:
         if args.model_type == 'llama':
             tokenizer = LlamaTokenizer.from_pretrained(args.model_name_or_path, truncation_side=args.truncation_side, padding_side=args.padding_side)
             tokenizer.model_max_length = args.model_max_length
@@ -114,6 +123,18 @@ def main():
             data_collator = rrhf_data_collator(tokenizer, args)
 
         trainer = Trainer(
+            model=model,
+            tokenizer=tokenizer,
+            args=args,
+            train_dataset=train_dataset,
+            eval_dataset=eval_dataset,
+            data_collator=data_collator
+        )
+    elif args.task_type == 'contrastive_learning':
+        print_rank_0("Using contrastive learning data collator")
+        data_collator = contrastive_data_collator(tokenizer, args)
+
+        trainer = ContrastiveTrainer(
             model=model,
             tokenizer=tokenizer,
             args=args,

@@ -120,3 +120,47 @@ def rrhf_data_collator(tokenizer: PreTrainedTokenizer, args: CustomArguments):
         print(examples)
     
     return collator
+
+    
+def contrastive_data_collator(tokenizer: PreTrainedTokenizer, args: CustomArguments):
+    def collator(examples):
+        texts = []
+        prompts = []
+        scores = []
+        for example in examples:
+            text = example['prompt'] + example['answer']
+            texts.append(text + tokenizer.eos_token)
+            prompts.append(example['prompt'])
+            scores.append(example['score'])
+
+        if not args.only_predict_answer:
+            encoding = tokenizer(texts, padding=True, truncation=True)
+            return {
+                'input_ids': torch.tensor(encoding['input_ids']),
+                'attention_mask': torch.tensor(encoding['attention_mask']),
+                'labels': torch.tensor(encoding['input_ids']),
+                'scores': torch.tensor(scores)
+            }
+        else:
+            input_ids = []
+            labels = []
+            for prompt, text in zip(prompts, texts):
+                prompt_ids = tokenizer.encode(prompt)
+                text_ids = tokenizer.encode(text)
+                label = deepcopy(text_ids)
+                label[:len(prompt_ids)] = [args.ignore_token_id] * len(prompt_ids)
+                input_ids.append(torch.tensor(text_ids[-args.model_max_length:]))
+                labels.append(torch.tensor(label[-args.model_max_length:]))
+
+            input_ids = pad_sequence(input_ids, batch_first=True, padding_value=tokenizer.pad_token_id)
+            labels = pad_sequence(input_ids, batch_first=True, padding_value=tokenizer.pad_token_id)
+            attention_mask = torch.ne(input_ids, tokenizer.pad_token_id)
+
+            return {
+                "input_ids": input_ids,
+                "labels": labels,
+                "attention_mask": attention_mask,
+                "scores": torch.tensor(scores)
+            } 
+    
+    return collator

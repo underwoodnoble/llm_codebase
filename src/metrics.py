@@ -22,3 +22,7 @@ def compute_reward_metrics(predict: EvalPrediction):
     first_two_acc = (correct_compare[:, 0, 1]).sum() / (total_mask[:, 0, 1]).sum()
 
     return {"Preference total Acc": all_acc.item(), "First-two Acc": first_two_acc.item()}
+
+
+def comput_contrastive_metrics(predict: EvalPrediction):
+    logits = torch.from_numpy(predict.predictions)

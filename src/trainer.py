@@ -1,7 +1,11 @@
+from torch._tensor import Tensor
+from torch.nn.modules import Module
+from torch.utils.data import Dataset
 from transformers import Trainer
 from torch import nn
 import torch
-from typing import Dict, List, Optional
+from typing import Any, Dict, List, Optional, Tuple, Union
+from utils import print_rank_0
 
 
 def ranking_loss(logits: torch.Tensor, scores: torch.Tensor):
@@ -82,3 +86,62 @@ class RewardModelTrainer(Trainer):
             return (loss, None, None)
         
         return (loss, logits, labels)
+
+        
+class ContrastiveTrainer(Trainer):
+    def compute_loss(self, model: nn.Module, inputs: Dict[str, torch.Tensor], return_outputs=False):
+        device = model.device
+        input_ids = inputs['input_ids'].to(device)
+        attention_mask = inputs['attention_mask'].to(device)
+        labels = inputs['labels'].to(device)
+        scores = inputs['scores'].to(device)
+        outputs = model(input_ids=input_ids, attention_mask=attention_mask)
+        logits: torch.Tensor = outputs['logits']
+        shift_logits = logits[..., :-1, :].contiguous()
+        shift_labels = labels[..., 1:].contiguous()
+        all_probs = nn.functional.softmax(shift_logits, dim=-1)
+        ix, iy = torch.meshgrid(torch.arange(shift_labels.shape[0]), torch.arange(shift_labels.shape[1]), indexing='ij')
+        probs = all_probs[ix, iy, shift_labels] # (batch_size, seq_len - 1)
+        positive_mask = scores.view(shift_labels.shape[0], -1) > 0
+        negative_mask = scores.view(shift_labels.shape[0], -1) < 0
+        positive_probs = probs * positive_mask
+        negative_mask = (1 - probs) * negative_mask
+        probs = positive_probs + negative_mask
+        loss = -torch.log(probs).mean()
+        return (loss, logits) if return_outputs else loss
+
+    # def evaluate(self, eval_dataset: Dataset, ignore_keys: List[str] = None, metric_key_prefix: str = "eval") -> Dict[str, float]:
+    #     eval_dataloader = self.get_eval_dataloader(eval_dataset)
+    #     positive_ppl = 0
+    #     negitive_ppl = 0
+    #     num_positive_ppl = 0
+    #     num_negitive_ppl = 0
+    #     for inputs in eval_dataloader:
+    #         loss, logits, labels = self.prediction_step(self.model, inputs)
+    #         batch_size, seq_len, vocab_size = logits.shape
+    #         all_probs = torch.nn.functional.softmax(logits, dim=-1)
+    #         labels = labels[:, 1:]
+    #         ix, ij = torch.meshgrid(torch.arange(batch_size), torch.arange(seq_len))
+    #         probs = all_probs[ix, ij, labels]
+    #         ppl = torch.exp(-torch.log(probs).mean(dim=-1))
+
+    #         scores: torch.Tensor = inputs['scores']
+    #         positive_mask = scores.view(ppl.shape) > 0
+    #         negitive_mask = scores.view(ppl.shape) < 0
+    #         positive_ppl += (positive_mask * ppl).sum()
+    #         negitive_ppl += (negitive_mask * ppl).sum()           
+    #         num_positive_ppl += positive_mask.sum()
+    #         num_negitive_ppl += negitive_mask.sum()
+        
+    #     return {
+    #         "loss": loss,
+    #         "positive_ppl": positive_ppl / num_positive_ppl,
+    #         "negitive_ppl": negitive_ppl / num_negitive_ppl
+    #     }
+
+    # def prediction_step(self, model: Module, inputs: Dict[str, Tensor], prediction_loss_only: bool = False, ignore_keys: List[str] = None):
+    #     with torch.no_grad():
+    #         loss, logits = self.compute_loss(model, inputs, True) # logits: (batch_size, seq_len, vocab_size)
+    #     return (loss, logits, inputs['labels'])
+
+

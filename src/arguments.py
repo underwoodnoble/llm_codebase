@@ -42,12 +42,17 @@ class CustomArguments(transformers.TrainingArguments):
 
     ## Preference alignment training arguments
     sep_token: Optional[str] = field(default=None, metadata={"help": "the token that can use to seperate the query and answer in preference data"})
+    
+    ## Contrastive learning
+    contrastive_data_prompt_name: Optional[str] = field(default=None)
+    contrastive_data_answer_name: Optional[str] = field(default=None)
+    contrastive_data_score_name: Optional[str] = field(default=None)
 
 
 
     def __post_init__(self):
         super().__post_init__()
-        valid_task_types = ["reward", "classification", "sft", "offline_rejection_sampling", "offline_RRHF"]
+        valid_task_types = ["reward", "classification", "sft", "offline_rejection_sampling", "offline_RRHF", "contrastive_learning"]
         if self.task_type not in valid_task_types:
             raise ValueError(f"Invalid task type. Expected one of {valid_task_types}, but got {self.task_type}")
 
