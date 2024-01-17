@@ -111,12 +111,12 @@ def main():
             data_collator=reward_data_collator(tokenizer),
             compute_metrics=compute_reward_metrics
             )
-    elif args.task_type in ['sft', 'offline_reject_sampling', 'offline_RRHF']:
+    elif args.task_type in ['sft', 'offline_rejection_sampling', 'offline_RRHF']:
         if args.task_type == 'sft':
             print_rank_0("Using sft data collator")
             data_collator = sft_data_collator(tokenizer, args)
-        elif args.task_type == 'offline_reject_sampling':
-            print_rank_0("Using reject sampling data collator")
+        elif args.task_type == 'offline_rejection_sampling':
+            print_rank_0("Using rejection sampling data collator")
             data_collator = rjs_data_collator(tokenizer, args)
         elif args.task_type == 'offline_RRHF':
             print_rank_0("Using RRHF data collator")

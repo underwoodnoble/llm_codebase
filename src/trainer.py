@@ -110,38 +110,4 @@ class ContrastiveTrainer(Trainer):
         loss = -torch.log(probs).mean()
         return (loss, logits) if return_outputs else loss
 
-    # def evaluate(self, eval_dataset: Dataset, ignore_keys: List[str] = None, metric_key_prefix: str = "eval") -> Dict[str, float]:
-    #     eval_dataloader = self.get_eval_dataloader(eval_dataset)
-    #     positive_ppl = 0
-    #     negitive_ppl = 0
-    #     num_positive_ppl = 0
-    #     num_negitive_ppl = 0
-    #     for inputs in eval_dataloader:
-    #         loss, logits, labels = self.prediction_step(self.model, inputs)
-    #         batch_size, seq_len, vocab_size = logits.shape
-    #         all_probs = torch.nn.functional.softmax(logits, dim=-1)
-    #         labels = labels[:, 1:]
-    #         ix, ij = torch.meshgrid(torch.arange(batch_size), torch.arange(seq_len))
-    #         probs = all_probs[ix, ij, labels]
-    #         ppl = torch.exp(-torch.log(probs).mean(dim=-1))
-
-    #         scores: torch.Tensor = inputs['scores']
-    #         positive_mask = scores.view(ppl.shape) > 0
-    #         negitive_mask = scores.view(ppl.shape) < 0
-    #         positive_ppl += (positive_mask * ppl).sum()
-    #         negitive_ppl += (negitive_mask * ppl).sum()           
-    #         num_positive_ppl += positive_mask.sum()
-    #         num_negitive_ppl += negitive_mask.sum()
-        
-    #     return {
-    #         "loss": loss,
-    #         "positive_ppl": positive_ppl / num_positive_ppl,
-    #         "negitive_ppl": negitive_ppl / num_negitive_ppl
-    #     }
-
-    # def prediction_step(self, model: Module, inputs: Dict[str, Tensor], prediction_loss_only: bool = False, ignore_keys: List[str] = None):
-    #     with torch.no_grad():
-    #         loss, logits = self.compute_loss(model, inputs, True) # logits: (batch_size, seq_len, vocab_size)
-    #     return (loss, logits, inputs['labels'])
-
 
