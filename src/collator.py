@@ -64,8 +64,6 @@ def sft_data_collator(tokenizer: PreTrainedTokenizer, args: CustomArguments):
             labels = pad_sequence(input_ids, batch_first=True, padding_value=tokenizer.pad_token_id)
             attention_mask = torch.ne(input_ids, tokenizer.pad_token_id)
 
-            print_rank_0(input_ids)
-            print_rank_0(labels)
             return {
                 "input_ids": input_ids,
                 "labels": labels,
