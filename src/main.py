@@ -1,6 +1,6 @@
 from arguments import CustomArguments
 from transformers import HfArgumentParser, BertForSequenceClassification, \
-    BertTokenizer, BertConfig, LlamaForSequenceClassification, LlamaConfig, LlamaTokenizer, LlamaForCausalLM, Trainer
+    BertTokenizer, BertConfig, LlamaTokenizer, LlamaForCausalLM, Trainer
 from model.reward_model import LlamaRewardModel
 from trainer import RewardModelTrainer, ContrastiveTrainer
 from utils import print_rank_0, load_data_from_paths, set_llama_special_token

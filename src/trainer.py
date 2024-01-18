@@ -105,8 +105,8 @@ class ContrastiveTrainer(Trainer):
         positive_mask = scores.view(shift_labels.shape[0], -1) > 0
         negative_mask = scores.view(shift_labels.shape[0], -1) < 0
         positive_probs = probs * positive_mask
-        negative_mask = (1 - probs) * negative_mask
-        probs = positive_probs + negative_mask
+        negative_probs = (1 - probs) * negative_mask
+        probs = positive_probs + negative_probs
         loss = -torch.log(probs).mean()
         return (loss, logits) if return_outputs else loss
 
