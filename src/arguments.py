@@ -15,11 +15,19 @@ class CustomArguments(transformers.TrainingArguments):
     eval_data_dir: str = field(default=None, metadata={"help": "the directory to load evaluation datasets."})
     eval_data_paths: List[str] = field(default=None, metadata={"help": "evaluation dataset paths."})
 
+    # classification
+    cls_data_text_name: Optional[str] = field(default='text', metadata={"help": "text's names"})
+    cls_data_label_name: Optional[str] = field(default='label', metadata={"help": "text label names"})
+    cls_data_label_nums: Optional[int] = field(default=None, metadata={"help": "num of label types"})
+
+    # sft
     sft_data_prompt_name: Optional[str] = field(default='prompt', metadata={"help": "prompt name."})
     sft_data_answer_name: Optional[str] = field(default='answer', metadata={"help": "answer name"})
 
-    preference_data_texts_name: Optional[str] = field(default='texts', metadata={"help": "key in preference data that indicate texts"})
-    preference_data_scores_name: Optional[str] = field(default="scores", metadata={"help": "key in preference data that indicate scores"})
+    # preference training, dpo, reward...
+    preference_data_text_name: Optional[str] = field(default='texts', metadata={"help": "key in preference data that indicate texts"})
+    preference_data_score_name: Optional[str] = field(default="scores", metadata={"help": "key in preference data that indicate scores"})
+    length_penalty: Optional[float] = field(default=1.0, metadata={"help": "length penalty in RRHF"})
 
     # model arguments
     model_type: Optional[str] = field(default='bert', metadata={"help": "base model to use."})
@@ -52,7 +60,7 @@ class CustomArguments(transformers.TrainingArguments):
 
     def __post_init__(self):
         super().__post_init__()
-        valid_task_types = ["reward", "classification", "sft", "offline_rejection_sampling", "offline_RRHF", "contrastive_learning"]
+        valid_task_types = ["reward", "classification", "multi_object_classification", "sft", "offline_rejection_sampling", "offline_RRHF", "contrastive_learning"]
         if self.task_type not in valid_task_types:
             raise ValueError(f"Invalid task type. Expected one of {valid_task_types}, but got {self.task_type}")
 
@@ -65,7 +73,7 @@ class CustomArguments(transformers.TrainingArguments):
         if self.eval_data_dir is not None and self.eval_data_paths is not None:
             raise ValueError(f"Only one of eval_dir and eval_data_paths should be set.")
 
-        valid_model_types = ['bert', 'llama']
+        valid_model_types = ['bert', 'llama', 'baichuan']
         if self.model_type not in valid_model_types:
             raise ValueError(f"Invalid model type. Expected one of {valid_model_types}, but got {self.model_type}.")
         if self.model_name_or_path is None:

@@ -1,12 +1,12 @@
 from arguments import CustomArguments
 from transformers import HfArgumentParser, BertForSequenceClassification, \
-    BertTokenizer, BertConfig, LlamaTokenizer, LlamaForCausalLM, Trainer
-from model.reward_model import LlamaRewardModel
-from trainer import RewardModelTrainer, ContrastiveTrainer
+    BertTokenizer, BertConfig, LlamaTokenizer, LlamaForCausalLM, Trainer, AutoConfig, AutoTokenizer, AutoModelForSequenceClassification
+from model.RewardModel import LlamaRewardModel
+from trainer import RewardModelTrainer, ContrastiveTrainer, RRHFTrainer
 from utils import print_rank_0, load_data_from_paths, set_llama_special_token
 from datasets import Dataset
-from collator import reward_data_collator, sft_data_collator, rjs_data_collator, rrhf_data_collator, contrastive_data_collator
-from metrics import compute_reward_metrics
+from collator import reward_data_collator, sft_data_collator, rjs_data_collator, rrhf_data_collator, contrastive_data_collator, classfication_data_collator
+from metrics import compute_reward_metrics, compute_classification_metrics
 import os
 
 
@@ -25,12 +25,12 @@ def getDataset(args: CustomArguments, type='train'):
 
     if args.task_type in ['reward', "offline_rejection_sampling", "offline_RRHF"]:
         # transform to the format: {"texts": ["text1", "text2"], "scores": [s1, s2]}
-        if args.preference_data_texts_name != 'texts' or args.preference_data_scores_name != 'scores':
+        if args.preference_data_text_name != 'texts' or args.preference_data_score_name != 'scores':
             new_data_list = []
             for data in data_list:
                 new_data = {
-                    "texts": data[args.preference_data_texts_name],
-                    "scores": data[args.preference_data_scores_name]
+                    "texts": data[args.preference_data_text_name],
+                    "scores": data[args.preference_data_score_name]
                 }
                 new_data_list.append(new_data)
             data_list = new_data_list
@@ -53,6 +53,27 @@ def getDataset(args: CustomArguments, type='train'):
                     "answer": data[args.contrastive_data_answer_name],
                     "score": data[args.contrastive_data_score_name]
                 }
+    elif args.task_type == 'classification':
+        new_data_list = []
+        labels = []
+        args.id2label = {}
+        args.label2id = {}
+        for data in data_list:
+            new_data = {
+                "text": data[args.cls_data_text_name],
+                "label": data[args.cls_data_label_name]
+            }
+            new_data_list.append(new_data)
+            labels.append(new_data['label'])
+        
+        labels = list(set(labels))
+        for i, label in enumerate(labels):
+            args.id2label[i] = label
+            args.label2id[label] = i
+
+        if args.cls_data_label_nums is None:
+            args.cls_data_label_nums = len(labels)
+        data_list = new_data_list
     
     return Dataset.from_list(data_list)
     
@@ -77,6 +98,16 @@ def loadTokenizerAndModel(args: CustomArguments):
             tokenizer = LlamaTokenizer.from_pretrained(args.model_name_or_path, truncation_side=args.truncation_side, padding_side=args.padding_side)
             tokenizer.model_max_length = args.model_max_length
             model = LlamaForCausalLM.from_pretrained(args.model_name_or_path)
+            set_llama_special_token(tokenizer, model)
+    elif args.task_type == 'classification':
+        config = AutoConfig.from_pretrained(args.model_name_or_path)
+        config.num_labels = args.cls_data_label_nums
+        config.id2label = args.id2label
+        config.label2id = args.label2id
+        tokenizer = AutoTokenizer.from_pretrained(args.model_name_or_path, truncation_side=args.truncation_side, padding_side=args.padding_side, trust_remote_code=True)
+        tokenizer.model_max_length = args.model_max_length
+        model = AutoModelForSequenceClassification.from_pretrained(args.model_name_or_path, config=config)
+        if args.model_type == 'llama':
             set_llama_special_token(tokenizer, model)
     
     return tokenizer, model
@@ -111,16 +142,13 @@ def main():
             data_collator=reward_data_collator(tokenizer),
             compute_metrics=compute_reward_metrics
             )
-    elif args.task_type in ['sft', 'offline_rejection_sampling', 'offline_RRHF']:
+    elif args.task_type in ['sft', 'offline_rejection_sampling']:
         if args.task_type == 'sft':
             print_rank_0("Using sft data collator")
             data_collator = sft_data_collator(tokenizer, args)
         elif args.task_type == 'offline_rejection_sampling':
             print_rank_0("Using rejection sampling data collator")
             data_collator = rjs_data_collator(tokenizer, args)
-        elif args.task_type == 'offline_RRHF':
-            print_rank_0("Using RRHF data collator")
-            data_collator = rrhf_data_collator(tokenizer, args)
 
         trainer = Trainer(
             model=model,
@@ -142,9 +170,31 @@ def main():
             eval_dataset=eval_dataset,
             data_collator=data_collator
         )
+    elif args.task_type == 'classification':
+        print_rank_0("Using classification data collator")
+        data_collator = classfication_data_collator(tokenizer, args)
+        trainer = Trainer(
+            model=model,
+            tokenizer=tokenizer,
+            args=args,
+            train_dataset=train_dataset,
+            eval_dataset=eval_dataset,
+            data_collator=data_collator,
+            compute_metrics=compute_classification_metrics
+        )
+    elif args.task_type == 'offline_RRHF':
+        print_rank_0("Using offline RRHF data collator")
+        data_collator = rrhf_data_collator(tokenizer, args)
+        trainer = RRHFTrainer(
+            model=model,
+            args=args,
+            data_collator=data_collator,
+            train_dataset=train_dataset,
+            eval_dataset=eval_dataset,
+            tokenizer=tokenizer
+        )
 
     trainer.train()
-    trainer.save_model(args.output_dir)
 
 if __name__ == '__main__':
     main()

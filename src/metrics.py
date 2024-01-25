@@ -1,5 +1,6 @@
 from transformers import EvalPrediction
 import torch
+import numpy as np
 
 
 def compute_reward_metrics(predict: EvalPrediction):
@@ -24,5 +25,13 @@ def compute_reward_metrics(predict: EvalPrediction):
     return {"Preference total Acc": all_acc.item(), "First-two Acc": first_two_acc.item()}
 
 
-def comput_contrastive_metrics(predict: EvalPrediction):
+def compute_classification_metrics(eval_pred: EvalPrediction):
+    predictions, labels = eval_pred
+    predictions = np.argmax(predictions, axis=1)
+    acc = (predictions == labels).sum() / len(labels)
+    return {
+        "acc": acc
+    }
+
+def compute_contrastive_metrics(predict: EvalPrediction):
     logits = torch.from_numpy(predict.predictions)
