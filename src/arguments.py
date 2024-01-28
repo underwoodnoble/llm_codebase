@@ -60,7 +60,8 @@ class CustomArguments(transformers.TrainingArguments):
 
     def __post_init__(self):
         super().__post_init__()
-        valid_task_types = ["reward", "classification", "multi_object_classification", "sft", "offline_rejection_sampling", "offline_RRHF", "contrastive_learning"]
+        valid_task_types = ["reward", "classification", "multi_object_classification", 
+                            "sft", "offline_rejection_sampling", "offline_RRHF", "contrastive_learning"]
         if self.task_type not in valid_task_types:
             raise ValueError(f"Invalid task type. Expected one of {valid_task_types}, but got {self.task_type}")
 
