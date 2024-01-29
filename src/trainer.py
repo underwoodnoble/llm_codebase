@@ -168,5 +168,5 @@ class RRHFTrainer(Trainer):
         scores: torch.Tensor = self.get_score(label_logit, labels) # (batch_size*num_of_example)
         rrhf_loss = self.rrhf_loss(scores.view(batch_size, num_of_example), rewards)
         sft_loss = self.sft_loss(label_logit, rewards)
-        loss = rrhf_loss + sft_loss
+        loss = self.args.rrhf_weight * rrhf_loss + sft_loss
         return (loss, scores) if return_outputs else loss
