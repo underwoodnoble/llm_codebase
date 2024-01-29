@@ -25,6 +25,7 @@ def get_args():
     parser.add_argument('--data_answer_name', type=str, default='answer')
     parser.add_argument('--model_max_length', type=int, default=512)
     parser.add_argument('--debug_mode', type=bool, default=False)
+    parser.add_argument('--ppl_outlier_gate', type=float, default=10000)
     args = parser.parse_args()
     return args
 
@@ -62,9 +63,12 @@ def main(args):
         all_ppl = torch.tensor(all_ppl)
         all_loss = torch.tensor(all_loss)
         num_of_nan = torch.isnan(all_ppl).sum()
+        mask = all_ppl < args.ppl_outlier_gate # delete outlier
         print(">"*100)
+        print(f"Model: {args.model_name_or_path}")
+        print(f"Dataset: {args.data_path}")
         print(f"Num of nan: {num_of_nan}")
-        print("Average valid ppl: ", all_ppl.nanmean())
+        print("Average valid ppl: ", (all_ppl * mask.float()).nanmean())
         print("exp(average loss): ", torch.exp(all_loss.nanmean()).item())
 
 
