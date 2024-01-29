@@ -8,6 +8,7 @@ from datasets import Dataset
 from test import compute_ppl
 import json
 from tqdm import tqdm
+import torch
 
 
 def get_args():
@@ -34,6 +35,9 @@ def main(args):
     tokenizer, model = loadTestTokenizerAndModel(args)
     model.to(distributed_state.device)
 
+    if distributed_state.is_main_process:
+        all_ppl = []
+        all_loss = []
     for i in range(0, len(dataset), args.cache_size):
         total_ret = []
         with distributed_state.split_between_processes(dataset[i:i+args.cache_size]) as sub_dataset:
@@ -51,6 +55,17 @@ def main(args):
             with open(args.save_path, 'a+') as f:
                 for ret in total_ret:
                     f.write(json.dumps(ret) + '\n')
+                    all_ppl.append(ret["ppl"])
+                    all_loss.append(ret["loss"])
+    
+    if distributed_state.is_main_process:
+        all_ppl = torch.tensor(all_ppl)
+        all_loss = torch.tensor(all_loss)
+        num_of_nan = torch.isnan(all_ppl).sum()
+        print(">"*100)
+        print(f"Num of nan: {num_of_nan}")
+        print("Average valid ppl: ", all_ppl.nanmean())
+        print("exp(average loss): ", torch.exp(all_loss.nanmean()).item())
 
 
 if __name__ == '__main__':

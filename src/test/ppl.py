@@ -20,10 +20,13 @@ def compute_ppl(data: Dict[str, Dict[str, List[str]]], tokenizer: PreTrainedToke
         input_ids.append(torch.tensor(text_ids[-tokenizer.model_max_length:]))
         labels.append(torch.tensor(label[-tokenizer.model_max_length:]))
 
+    losses = []
     ppls = []
     with torch.no_grad():
         for i, l in zip(input_ids, labels):
             outputs = model(input_ids=i.unsqueeze(0).to(device), labels=l.unsqueeze(0).to(device))
-        neg_log_likelihood = outputs.loss
-        ppls.append(torch.exp(neg_log_likelihood).item())
-    return [{"prompt": prompt, "answer": answer, "ppl": ppl} for prompt, answer, ppl in zip(data['prompt'], data['answer'], ppls)]
+            neg_log_likelihood = outputs.loss
+            losses.append(neg_log_likelihood.item())
+            ppls.append(torch.exp(neg_log_likelihood).item())
+    return [{"prompt": prompt, "answer": answer, "ppl": ppl, "loss": loss}
+            for prompt, answer, ppl, loss in zip(data['prompt'], data['answer'], ppls, losses)]
