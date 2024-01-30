@@ -7,6 +7,7 @@ from model.RewardModel import LlamaRewardModel
 from arguments import CustomArguments
 from datasets import Dataset
 import os
+from typing import List
 
 
 def print_rank_0(message):
@@ -32,7 +33,7 @@ def read_json_or_jsonl_data(data_path: str):
     return data_list
 
     
-def load_data_from_paths(data_paths: str):
+def load_data_from_paths(data_paths: List[str]):
     total_data_list = []
     i = 0
     for data_path in data_paths:
