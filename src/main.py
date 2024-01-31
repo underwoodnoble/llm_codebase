@@ -1,9 +1,9 @@
 from arguments import CustomArguments
 from transformers import HfArgumentParser, Trainer
-from trainer import RewardModelTrainer, ContrastiveTrainer, RRHFTrainer
+from trainer import RewardModelTrainer, WeightedTrainer, RRHFTrainer
 from utils import print_rank_0, getDataset, loadTokenizerAndModel
 from collator import (reward_data_collator, sft_data_collator, rjs_data_collator, 
-                    rrhf_data_collator, contrastive_data_collator, classfication_data_collator)
+                    rrhf_data_collator, weighted_data_collator, classfication_data_collator)
 from metrics import compute_reward_metrics, compute_classification_metrics
 from trl import DPOTrainer
 
@@ -53,11 +53,11 @@ def main():
             eval_dataset=eval_dataset,
             data_collator=data_collator
         )
-    elif args.task_type == 'contrastive_learning':
-        print_rank_0("Using contrastive learning data collator")
-        data_collator = contrastive_data_collator(tokenizer, args)
+    elif args.task_type == 'weighted_learning':
+        print_rank_0("Using weighted learning data collator")
+        data_collator = weighted_data_collator(tokenizer, args)
 
-        trainer = ContrastiveTrainer(
+        trainer = WeightedTrainer(
             model=model,
             tokenizer=tokenizer,
             args=args,

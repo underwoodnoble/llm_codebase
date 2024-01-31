@@ -142,14 +142,14 @@ def getDataset(args: CustomArguments, type='train'):
                 }
                 new_data_list.append(new_data)
             data_list = new_data_list
-    elif args.task_type == 'contrastive_learning':
-        if args.contrastive_data_prompt_name != 'prompt' or args.contrastive_data_answer_name != 'answer' or args.contrastive_data_score_name != 'score':
+    elif args.task_type == 'weighted_learning':
+        if args.weighted_data_prompt_name != 'prompt' or args.weighted_data_answer_name != 'answer' or args.weighted_data_score_name != 'score':
             new_data_list = []
             for data in data_list:
                 new_data = {
-                    "prompt": data[args.contrastive_data_prompt_name],
-                    "answer": data[args.contrastive_data_answer_name],
-                    "score": data[args.contrastive_data_score_name]
+                    "prompt": data[args.weighted_data_prompt_name],
+                    "answer": data[args.weighted_data_answer_name],
+                    "score": data[args.weighted_data_score_name]
                 }
     elif args.task_type == 'classification':
         new_data_list = []
@@ -193,7 +193,7 @@ def loadTokenizerAndModel(args: CustomArguments):
             set_llama_special_token(tokenizer, model)
         else:
             raise ValueError(f"Training reward model do not support the model type {args.model_type}.")
-    elif args.task_type in ['sft', 'offline_rejection_sampling', "offline_RRHF", 'contrastive_learning']:
+    elif args.task_type in ['sft', 'offline_rejection_sampling', "offline_RRHF", 'weighted_learning']:
         if args.model_type == 'llama':
             tokenizer = LlamaTokenizer.from_pretrained(args.model_name_or_path, truncation_side=args.truncation_side, padding_side=args.padding_side)
             tokenizer.model_max_length = args.model_max_length

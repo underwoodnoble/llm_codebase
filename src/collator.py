@@ -186,7 +186,7 @@ def rrhf_data_collator(tokenizer: PreTrainedTokenizer, args: CustomArguments):
     return collator
 
     
-def contrastive_data_collator(tokenizer: PreTrainedTokenizer, args: CustomArguments):
+def weighted_data_collator(tokenizer: PreTrainedTokenizer, args: CustomArguments):
     def collator(examples):
         texts = []
         prompts = []

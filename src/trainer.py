@@ -89,7 +89,7 @@ class RewardModelTrainer(Trainer):
         return (loss, logits, labels)
 
         
-class ContrastiveTrainer(Trainer):
+class WeightedTrainer(Trainer):
     def compute_loss(self, model: nn.Module, inputs: Dict[str, torch.Tensor], return_outputs=False):
         device = model.device
         input_ids = inputs['input_ids'].to(device)
@@ -108,7 +108,7 @@ class ContrastiveTrainer(Trainer):
         positive_probs = probs * positive_mask
         negative_probs = (1 - probs) * negative_mask
         probs = positive_probs + negative_probs
-        loss = -torch.log(probs).mean()
+        loss = -(torch.log(probs)*scores.abs().view(shift_labels.shape[0], -1)).mean()
         return (loss, logits) if return_outputs else loss
 
         
