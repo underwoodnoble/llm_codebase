@@ -89,7 +89,7 @@ def getDataset(args: CustomArguments, type='train'):
             data_paths = [os.path.join(args.eval_data_dir, path) for path in os.listdir(args.eval_data_dir)]       
     data_list = load_data_from_paths(data_paths)
 
-    if args.task_type in ['reward', "offline_rejection_sampling", "offline_RRHF"]:
+    if args.task_type in ['reward', "offline_rejection_sampling", "offline_RRHF", "DPO"]:
         # transform to the format: {"texts": ["text1", "text2"], "scores": [s1, s2]}
         if args.preference_data_text_name != 'texts' or args.preference_data_score_name != 'scores':
             new_data_list = []

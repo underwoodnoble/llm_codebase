@@ -68,7 +68,7 @@ def main(args):
         print(f"Model: {args.model_name_or_path}")
         print(f"Dataset: {args.data_path}")
         print(f"Num of nan: {num_of_nan}")
-        print("Average valid ppl: ", (all_ppl * mask.float()).nanmean())
+        print("Average valid ppl: ", (all_ppl * mask.float()).nanmean().item())
         print("exp(average loss): ", torch.exp(all_loss.nanmean()).item())
 
 

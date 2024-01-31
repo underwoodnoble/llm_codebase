@@ -226,3 +226,10 @@ def contrastive_data_collator(tokenizer: PreTrainedTokenizer, args: CustomArgume
             } 
     
     return collator
+
+    
+def dpo_collator(tokenizer: PreTrainedTokenizer, args: CustomArguments):
+    def collator(examples: List[Dict[str, List]]):
+        pass
+
+    return collator
