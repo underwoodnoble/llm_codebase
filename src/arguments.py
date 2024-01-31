@@ -5,6 +5,7 @@ from typing import Optional, List
 
 @dataclass
 class CustomArguments(transformers.TrainingArguments):
+    debug_mode: Optional[bool] = field(default=False)
     # task arguments
     task_type: Optional[str] = field(default='reward')
 

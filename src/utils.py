@@ -103,7 +103,7 @@ def dpo_transform(data_list: List[Dict[str, List]], args: CustomArguments):
                             {"prompt": prompt, "chosen": ans2, "rejected": ans1}
                         )
 
-    return new_data_list[:1000]
+    return new_data_list
 
 def getDataset(args: CustomArguments, type='train'):
     if type == 'train':
@@ -173,6 +173,8 @@ def getDataset(args: CustomArguments, type='train'):
             args.cls_data_label_nums = len(labels)
         data_list = new_data_list
     
+    if args.debug_mode:
+        data_list = data_list[:1000]
     return Dataset.from_list(data_list)
 
 
