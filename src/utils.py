@@ -7,7 +7,7 @@ from model.RewardModel import LlamaRewardModel
 from arguments import CustomArguments
 from datasets import Dataset
 import os
-from typing import List
+from typing import List, Dict
 
 
 def print_rank_0(message):
@@ -76,6 +76,35 @@ def set_llama_special_token(tokenizer: LlamaTokenizer, model: LlamaPreTrainedMod
         output_embeddings[-num_new_tokens:] = output_embeddings_avg
 
 
+def dpo_transform(data_list: List[Dict[str, List]], args: CustomArguments):
+    new_data_list = []
+    for data in data_list:
+        if args.best_to_rest:
+            best_id = torch.argmax(data['scores']).item()
+            best_test = data['texts'][best_id]
+            prompt, chosen = best_test.split(args.sep_token)
+            new_data_list.extend(
+                [
+                    {"prompt": prompt, "chosen": chosen, 'rejected': rejected} 
+                    for rejected in [text for i, text in enumerate(data['texts']) if i != best_id]
+                ]
+            )
+        else:
+            for i in range(len(data['texts']) - 1):
+                for j in range(i, len(data['texts'])):
+                    prompt, ans1 = data['texts'][i].split(args.sep_token)
+                    _, ans2 = data['texts'][j].split(args.sep_token)
+                    if data['scores'][i] > data['scores'][j]:
+                        new_data_list.append(
+                            {"prompt": prompt, "chosen": ans1, "rejected": ans2}
+                        )
+                    else:
+                        new_data_list.append(
+                            {"prompt": prompt, "chosen": ans2, "rejected": ans1}
+                        )
+
+    return new_data_list[:1000]
+
 def getDataset(args: CustomArguments, type='train'):
     if type == 'train':
         if args.data_paths is not None:
@@ -100,6 +129,9 @@ def getDataset(args: CustomArguments, type='train'):
                 }
                 new_data_list.append(new_data)
             data_list = new_data_list
+        if args.task_type == 'DPO':
+            data_list = dpo_transform(data_list, args)
+
     elif args.task_type == 'sft':
         if args.sft_data_prompt_name != 'prompt' or args.sft_data_answer_name != 'answer':
             new_data_list = []
@@ -175,8 +207,16 @@ def loadTokenizerAndModel(args: CustomArguments):
         model = AutoModelForSequenceClassification.from_pretrained(args.model_name_or_path, config=config)
         if args.model_type == 'llama':
             set_llama_special_token(tokenizer, model)
+    elif args.task_type == 'DPO':
+        if args.model_type == 'llama':
+            tokenizer = LlamaTokenizer.from_pretrained(args.model_name_or_path, truncation_side=args.truncation_side, padding_side=args.padding_side)
+            tokenizer.model_max_length = args.model_max_length
+            model = LlamaForCausalLM.from_pretrained(args.model_name_or_path)
+            ref_model = LlamaForCausalLM.from_pretrained(args.model_name_or_path)
+            set_llama_special_token(tokenizer, model)       
+        return tokenizer, model, ref_model
     
-    return tokenizer, model
+    return tokenizer, model, None
 
 
 def getTestDataset(args):

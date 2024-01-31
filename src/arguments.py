@@ -57,6 +57,10 @@ class CustomArguments(transformers.TrainingArguments):
     contrastive_data_answer_name: Optional[str] = field(default=None)
     contrastive_data_score_name: Optional[str] = field(default=None)
 
+    ## DPO
+    best_to_rest: Optional[bool] = field(default=False, metadata={"help": "The method used to construct preference pairs."})
+    dpo_beta: Optional[str] = field(default=0.1, metadata={"help":"The beta factor in DPO loss. Higher beta means less divergence from the initial policy."})
+    max_prompt_length: Optional[str] = field(default=128, metadata={"help": "The maximum length of the prompt."})
 
 
     def __post_init__(self):

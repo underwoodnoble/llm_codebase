@@ -1,10 +1,11 @@
 import torch
 from arguments import CustomArguments
-from transformers import PreTrainedTokenizer
+from transformers import PreTrainedTokenizer, PreTrainedModel
 from typing import List, Dict
 from copy import deepcopy
 from torch.nn.utils.rnn import pad_sequence
 from utils import print_rank_0
+from trl.trainer.utils import DPODataCollatorWithPadding
 
 
 def classfication_data_collator(tokenizer: PreTrainedTokenizer, args: CustomArguments):
@@ -14,7 +15,7 @@ def classfication_data_collator(tokenizer: PreTrainedTokenizer, args: CustomArgu
         for example in examples:
             texts.append(example['text'])
             labels.append(args.label2id[example['label']])
-        encodings = tokenizer(texts, padding=True, truncation=True)
+        encodings = tokenizer(texts, padding=True, truncation=True, add_special_tokens=True)
 
         return {
             "input_ids": torch.tensor(encodings['input_ids']),
@@ -46,7 +47,7 @@ def reward_data_collator(tokenizer: PreTrainedTokenizer):
 
         for i in range(len(all_texts)):
             all_texts[i] += tokenizer.eos_token
-        encodings = tokenizer(all_texts, padding=True, truncation=True)
+        encodings = tokenizer(all_texts, padding=True, truncation=True, add_special_tokens=True)
 
         return {
             "input_ids": torch.tensor(encodings['input_ids']).reshape(batch_size, num_sample, -1),
@@ -77,8 +78,8 @@ def sft_data_collator(tokenizer: PreTrainedTokenizer, args: CustomArguments):
             input_ids = []
             labels = []
             for prompt, text in zip(prompts, texts):
-                prompt_ids = tokenizer.encode(prompt)
-                text_ids = tokenizer.encode(text)
+                prompt_ids = tokenizer.encode(prompt, add_special_tokens=False)
+                text_ids = tokenizer.encode(text, add_special_tokens=True)
                 label = deepcopy(text_ids)
                 label[:len(prompt_ids)] = [args.ignore_token_id] * len(prompt_ids)
                 input_ids.append(torch.tensor(text_ids[-args.model_max_length:]))
@@ -106,7 +107,7 @@ def rjs_data_collator(tokenizer: PreTrainedTokenizer, args: CustomArguments):
             best_text = texts[torch.argmax(torch.tensor(scores))]
             best_texts.append(best_text + tokenizer.eos_token)
         if not args.only_predict_answer:
-            encoding = tokenizer(best_texts, padding=True, truncation=True)
+            encoding = tokenizer(best_texts, padding=True, truncation=True, add_special_tokens=True)
             return {
                 'input_ids': torch.tensor(encoding['input_ids']),
                 'attention_mask': torch.tensor(encoding['attention_mask']),
@@ -117,8 +118,8 @@ def rjs_data_collator(tokenizer: PreTrainedTokenizer, args: CustomArguments):
             labels = []
             for text in best_texts:
                 query, _ = text.split(args.sep_token)
-                query_ids = tokenizer.encode(query)
-                text_ids = tokenizer.encode(text)
+                query_ids = tokenizer.encode(query, add_special_tokens=False)
+                text_ids = tokenizer.encode(text, add_special_tokens=True)
                 label = deepcopy(text_ids)
                 label[:len(query_ids)] = [args.ignore_token_id] * len(query_ids)
                 input_ids.append(torch.tensor(text_ids[-args.model_max_length:]))
@@ -137,6 +138,7 @@ def rjs_data_collator(tokenizer: PreTrainedTokenizer, args: CustomArguments):
 
     return collator
         
+
 def rrhf_data_collator(tokenizer: PreTrainedTokenizer, args: CustomArguments):
     def collator(examples: List[Dict[str, List]]):
         all_texts: List[str] = []
@@ -151,7 +153,7 @@ def rrhf_data_collator(tokenizer: PreTrainedTokenizer, args: CustomArguments):
             all_texts.extend(example['texts'])
             all_scores.extend(example['scores'])
         if not args.only_predict_answer:
-            encoding = tokenizer(all_texts, padding=True, truncation=True)
+            encoding = tokenizer(all_texts, padding=True, truncation=True, add_special_tokens=True)
             return {
                 "input_ids": torch.tensor(encoding['input_ids']).view(batch_size, num_sample, -1),
                 "attention_mask": torch.tensor(encoding['attention_mask']).view(batch_size, num_sample, -1),
@@ -163,8 +165,8 @@ def rrhf_data_collator(tokenizer: PreTrainedTokenizer, args: CustomArguments):
             labels = []
             for text in all_texts:
                 query, _ = text.split(args.sep_token)
-                query_ids = tokenizer.encode(query)
-                text_ids = tokenizer.encode(text)
+                query_ids = tokenizer.encode(query, add_special_tokens=False)
+                text_ids = tokenizer.encode(text, add_special_tokens=True)
                 label = deepcopy(text_ids)
                 label[:len(query_ids)] = [args.ignore_token_id] * len(query_ids)
                 input_ids.append(torch.tensor(text_ids[-args.model_max_length:]))
@@ -207,8 +209,8 @@ def contrastive_data_collator(tokenizer: PreTrainedTokenizer, args: CustomArgume
             input_ids = []
             labels = []
             for prompt, text in zip(prompts, texts):
-                prompt_ids = tokenizer.encode(prompt)
-                text_ids = tokenizer.encode(text)
+                prompt_ids = tokenizer.encode(prompt, add_special_tokens=False)
+                text_ids = tokenizer.encode(text, add_special_tokens=True)
                 label = deepcopy(text_ids)
                 label[:len(prompt_ids)] = [args.ignore_token_id] * len(prompt_ids)
                 input_ids.append(torch.tensor(text_ids[-args.model_max_length:]))
@@ -227,9 +229,3 @@ def contrastive_data_collator(tokenizer: PreTrainedTokenizer, args: CustomArgume
     
     return collator
 
-    
-def dpo_collator(tokenizer: PreTrainedTokenizer, args: CustomArguments):
-    def collator(examples: List[Dict[str, List]]):
-        pass
-
-    return collator
