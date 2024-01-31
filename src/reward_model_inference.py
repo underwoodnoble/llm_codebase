@@ -36,7 +36,8 @@ def main(args):
                     answers = [data['sample_0'], data['sample_1'], data['sample_2'], data['sample_3']]
                     texts = [query+answer for answer in answers]
                     input_ids = tokenizer(texts, padding=True, truncation=True)['input_ids']
-                    rewards: torch.Tensor = model(input_ids=torch.tensor(input_ids).to(model.device))['rm_logits']
+                    with torch.no_grad():
+                        rewards: torch.Tensor = model(input_ids=torch.tensor(input_ids).to(model.device))['rm_logits']
                     new_data = {
                         "texts": [query+'<sep>'+answer for answer in answers],
                         "scores": rewards.tolist()
