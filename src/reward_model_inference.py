@@ -1,4 +1,4 @@
-from model.RewardModel import PythiaRewardModel
+from model.RewardModel import PythiaRewardModel, LlamaRewardModel
 from transformers import AutoTokenizer
 from accelerate import PartialState
 from accelerate.utils import gather_object
@@ -6,6 +6,7 @@ import json
 import torch
 from tqdm import tqdm
 from argparse import ArgumentParser
+from utils import set_llama_special_token
 
 
 def load_dataset(data_path):
@@ -13,15 +14,21 @@ def load_dataset(data_path):
         dataset = json.load(f)
     return dataset[:80]
 
-def load_tokenizer_and_model(model_path):
-    tokenizer =  AutoTokenizer.from_pretrained(model_path, truncation_side='left', trust_remote_code=True)
-    model = PythiaRewardModel.from_pretrained(model_path, trust_remote_code=True)
+def load_tokenizer_and_model(args):
+    if args.model_type == 'pythia':
+        tokenizer =  AutoTokenizer.from_pretrained(args.model_name_or_path, truncation_side='left', trust_remote_code=True)
+        model = PythiaRewardModel.from_pretrained(args.model_name_or_path, trust_remote_code=True)
+    elif args.model_type == 'llama':
+        tokenizer = AutoTokenizer.from_pretrained(args.model_name_or_path, trucation_side='left')
+        model = LlamaRewardModel.from_pretrained(args.model_name_or_path)
+        print(tokenizer.pad_token)
+
     return tokenizer, model
 
 
 def main(args):
     distributed_state = PartialState()
-    tokenizer, model = load_tokenizer_and_model(args.model_name_or_path)
+    tokenizer, model = load_tokenizer_and_model(args)
     model.to(distributed_state.device)
     dataset = load_dataset(args.data_path)
     sub_dataset_size = 100
@@ -56,6 +63,9 @@ if __name__ == '__main__':
     parser = ArgumentParser()
     parser.add_argument(
         '--model_name_or_path', type=str,
+    )
+    parser.add_argument(
+        '--model_type', type=str, choices=['llama', 'pythia']
     )
     parser.add_argument(
         '--data_path', type=str
