@@ -34,7 +34,7 @@ class CustomArguments(transformers.TrainingArguments):
     # model arguments
     model_type: Optional[str] = field(default='bert', metadata={"help": "base model to use."})
     model_name_or_path: Optional[str] = field(default=None, metadata={"help": "pretrained model path"})
-    model_max_length: Optional[str] = field(default=512, metadata={"help": "the max sentence sequence length."})
+    model_max_length: Optional[int] = field(default=512, metadata={"help": "the max sentence sequence length."})
     ignore_token_id: Optional[str] = field(default=-100, metadata={"help": "token id used to inplace query ids."})
     
 
