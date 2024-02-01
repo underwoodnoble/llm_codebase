@@ -188,7 +188,7 @@ def getDataset(args: CustomArguments, type='train') -> Dataset:
     return Dataset.from_list(data_list)
 
 
-def loadTokenizerAndModel(args: CustomArguments) -> Tuple(PreTrainedTokenizer, PreTrainedModel, Optional[PreTrainedModel]):
+def loadTokenizerAndModel(args: CustomArguments) -> Tuple[PreTrainedTokenizer, PreTrainedModel, Optional[PreTrainedModel]]:
     if args.task_type == 'reward':
         if args.model_type == 'bert':
             config = BertConfig.from_pretrained(args.model_name_or_path)
@@ -253,7 +253,7 @@ def getTestDataset(args) -> List[Dict[str, Any]]:
     return data_list
 
 
-def loadTestTokenizerAndModel(args) -> Tuple(PreTrainedTokenizer, PreTrainedModel):
+def loadTestTokenizerAndModel(args) -> Tuple[PreTrainedTokenizer, PreTrainedModel]:
     if args.model_type == 'llama':
         tokenizer = LlamaTokenizer.from_pretrained(args.model_name_or_path, truncation_side='left', padding_side='right')
         tokenizer.model_max_length = args.model_max_length
