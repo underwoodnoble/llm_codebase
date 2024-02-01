@@ -79,17 +79,17 @@ def set_llama_special_token(tokenizer: LlamaTokenizer, model: LlamaPreTrainedMod
 def dpo_transform(data_list: List[Dict[str, List]], args: CustomArguments):
     new_data_list = []
     for data in data_list:
-        if args.best_to_rest:
-            best_id = torch.argmax(data['scores']).item()
-            best_test = data['texts'][best_id]
-            prompt, chosen = best_test.split(args.sep_token)
+        if args.construct_method == 'best_over_rest':
+            best_id = torch.tensor(data['scores']).argmax().item()
+            best_text = data['texts'][best_id]
+            prompt, chosen = best_text.split(args.sep_token)
             new_data_list.extend(
                 [
                     {"prompt": prompt, "chosen": chosen, 'rejected': rejected} 
                     for rejected in [text for i, text in enumerate(data['texts']) if i != best_id]
                 ]
             )
-        else:
+        elif args.construct_method == 'one_over_rest':
             for i in range(len(data['texts']) - 1):
                 for j in range(i, len(data['texts'])):
                     prompt, ans1 = data['texts'][i].split(args.sep_token)
@@ -102,6 +102,16 @@ def dpo_transform(data_list: List[Dict[str, List]], args: CustomArguments):
                         new_data_list.append(
                             {"prompt": prompt, "chosen": ans2, "rejected": ans1}
                         )
+        elif args.construct_method == 'best_over_worst':
+            best_id = torch.tensor(data['scores']).argmax().item()
+            worst_id = torch.tensor(data['scores']).argmin().item()
+            best_text: str = data['texts'][best_id]
+            worst_text: str = data['texts'][worst_id]
+            prompt, chosen = best_text.split(args.sep_token)
+            _, rejected = worst_text.split(args.sep_token)
+            new_data_list.append({"prompt": prompt, "chosen": chosen, "rejected": rejected})
+        else:
+            raise ValueError(f"Do not support construct method {args.construct_method}")
 
     return new_data_list
 
