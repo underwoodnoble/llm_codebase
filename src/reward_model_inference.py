@@ -6,7 +6,6 @@ import json
 import torch
 from tqdm import tqdm
 from argparse import ArgumentParser
-from utils import set_llama_special_token
 
 
 def load_dataset(data_path):
