@@ -2,15 +2,15 @@
 This repository is a framework for beginners to dive in llm training. The repository is based on huggingface transformers.
 
 ## Overview
-* Supported task：Classification, Reward Model Training, Supervised Finetuning, Rejection Sampling
+* Supported task：Classification, Reward Model Training, Supervised Finetuning, Rejection Sampling, Weighted Learning, RRHF
 
-* Supported model: bert, llama, alpaca 
+* Supported model: bert, llama
 
 | Model | Supported training method | 
 | --- | --- | 
 | bert | Classification, Reward Model Training |
-| llama | Reward Model Training, Supervised Finetuning, Rejection Sampling, RRHF, Contrastive learning|
-| alpaca | Reward Model Training, Supervised Finetuning, Rejection Sampling, RRHF, Contrastive learning|
+| llama | Reward Model Training, Supervised Finetuning, Rejection Sampling, RRHF, Weighted Learning|
+| alpaca | Reward Model Training, Supervised Finetuning, Rejection Sampling, RRHF, Weighted Learning|
 
 ## Installation
 ```bash
