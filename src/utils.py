@@ -2,15 +2,15 @@ import torch
 import json
 from tqdm import tqdm
 from transformers import (LlamaTokenizer, LlamaPreTrainedModel, BertForSequenceClassification, BertConfig, 
-BertTokenizer, AutoConfig, LlamaForCausalLM, AutoModelForSequenceClassification, AutoTokenizer)
+BertTokenizer, AutoConfig, LlamaForCausalLM, AutoModelForSequenceClassification, AutoTokenizer, PreTrainedTokenizer, PreTrainedModel)
 from model.RewardModel import LlamaRewardModel
 from arguments import CustomArguments
 from datasets import Dataset
 import os
-from typing import List, Dict
+from typing import List, Dict, Any, Optional, Tuple
 
 
-def print_rank_0(message):
+def print_rank_0(message) -> None:
     if torch.distributed.is_initialized():
         if torch.distributed.get_rank() == 0:
             print(message, flush=True)
@@ -18,7 +18,7 @@ def print_rank_0(message):
         print(message, flush=True)
 
 
-def read_json_or_jsonl_data(data_path: str):
+def read_json_or_jsonl_data(data_path: str) -> List:
     if data_path.endswith('json'):
         with open(data_path, 'r') as f:
             data_list = json.load(f)
@@ -33,7 +33,7 @@ def read_json_or_jsonl_data(data_path: str):
     return data_list
 
     
-def load_data_from_paths(data_paths: List[str]):
+def load_data_from_paths(data_paths: List[str]) -> List[Dict[str, Any]]:
     total_data_list = []
     i = 0
     for data_path in data_paths:
@@ -46,7 +46,7 @@ def load_data_from_paths(data_paths: List[str]):
     return total_data_list
 
     
-def set_llama_special_token(tokenizer: LlamaTokenizer, model: LlamaPreTrainedModel):
+def set_llama_special_token(tokenizer: LlamaTokenizer, model: LlamaPreTrainedModel) -> None:
     DEFAULT_PAD_TOKEN = "<pad>"
     DEFAULT_EOS_TOKEN = "</s>"
     DEFAULT_BOS_TOKEN = "<s>"
@@ -66,8 +66,8 @@ def set_llama_special_token(tokenizer: LlamaTokenizer, model: LlamaPreTrainedMod
     model.resize_token_embeddings(len(tokenizer))
 
     if num_new_tokens > 0:
-        input_embeddings = model.get_input_embeddings().weight.data
-        output_embeddings = model.get_output_embeddings().weight.data
+        input_embeddings: torch.Tensor = model.get_input_embeddings().weight.data
+        output_embeddings: torch.Tensor = model.get_output_embeddings().weight.data
 
         input_embeddings_avg = input_embeddings[:-num_new_tokens].mean(dim=0, keepdim=True)
         output_embeddings_avg = output_embeddings[:-num_new_tokens].mean(dim=0, keepdim=True)
@@ -76,7 +76,7 @@ def set_llama_special_token(tokenizer: LlamaTokenizer, model: LlamaPreTrainedMod
         output_embeddings[-num_new_tokens:] = output_embeddings_avg
 
 
-def dpo_transform(data_list: List[Dict[str, List]], args: CustomArguments):
+def dpo_transform(data_list: List[Dict[str, List]], args: CustomArguments) -> List[Dict[str, Any]]:
     new_data_list = []
     for data in data_list:
         if args.construct_method == 'best_over_rest':
@@ -115,7 +115,7 @@ def dpo_transform(data_list: List[Dict[str, List]], args: CustomArguments):
 
     return new_data_list
 
-def getDataset(args: CustomArguments, type='train'):
+def getDataset(args: CustomArguments, type='train') -> Dataset:
     if type == 'train':
         if args.data_paths is not None:
             data_paths = args.data_paths
@@ -188,7 +188,7 @@ def getDataset(args: CustomArguments, type='train'):
     return Dataset.from_list(data_list)
 
 
-def loadTokenizerAndModel(args: CustomArguments):
+def loadTokenizerAndModel(args: CustomArguments) -> Tuple(PreTrainedTokenizer, PreTrainedModel, Optional[PreTrainedModel]):
     if args.task_type == 'reward':
         if args.model_type == 'bert':
             config = BertConfig.from_pretrained(args.model_name_or_path)
@@ -231,7 +231,7 @@ def loadTokenizerAndModel(args: CustomArguments):
     return tokenizer, model, None
 
 
-def getTestDataset(args):
+def getTestDataset(args) -> List[Dict[str, Any]]:
     if args.data_path is not None:
         data_paths = [args.data_path]
     else:
@@ -253,7 +253,7 @@ def getTestDataset(args):
     return data_list
 
 
-def loadTestTokenizerAndModel(args):
+def loadTestTokenizerAndModel(args) -> Tuple(PreTrainedTokenizer, PreTrainedModel):
     if args.model_type == 'llama':
         tokenizer = LlamaTokenizer.from_pretrained(args.model_name_or_path, truncation_side='left', padding_side='right')
         tokenizer.model_max_length = args.model_max_length

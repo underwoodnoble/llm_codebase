@@ -10,7 +10,7 @@ from trl import DPOTrainer
 
 def main():
     parser = HfArgumentParser((CustomArguments,))
-    args = parser.parse_args_into_dataclasses()[0]
+    args: CustomArguments = parser.parse_args_into_dataclasses()[0]
     print_rank_0(args)
 
     if args.do_train:
