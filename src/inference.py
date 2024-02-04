@@ -1,7 +1,8 @@
-from transformers import LlamaTokenizer, LlamaForCausalLM
+from transformers import LlamaTokenizer, LlamaForCausalLM, GenerationConfig
 import os
 import json
 from typing import List, Dict
+import torch
 
 
 repo_dir = "/apdcephfs_cq10/share_1567347/nobelhu/code/llm_codebase"
@@ -11,6 +12,8 @@ def text_to_dialog(text: str):
     ret = []
     for temp in temps:
         ret.extend(temp)
+    print("ret>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>.")
+    print(ret)
     dialog = []
     role = 'user'
     for text in ret[:-1]:
@@ -23,7 +26,7 @@ def text_to_dialog(text: str):
             role = 'user'
     return dialog
 
-def dilog_to_tokens(tokenizer: LlamaTokenizer, dialog: List[Dict[str, str]]):
+def dialog_to_tokens(tokenizer: LlamaTokenizer, dialog: List[Dict[str, str]]):
     B_SYS, E_SYS = "<<SYS>>\n", "\n<</SYS>>\n\n"
     B_INST, E_INST = "[INST]", "[/INST]"
     if dialog[0]['role'] == 'system':
@@ -65,7 +68,24 @@ def dilog_to_tokens(tokenizer: LlamaTokenizer, dialog: List[Dict[str, str]]):
 
 with open(os.path.join(repo_dir, "data/preference_data/helpful/helpful.test.json"), 'r') as f:
     dataset = json.load(f)
-    tokenizer = LlamaTokenizer.from_pretrained('/apdcephfs_cq10/share_1567347/share_info/llm_models/Llama-2-7b-chat-hf')
-    for data in dataset[:10]:
+    tokenizer = LlamaTokenizer.from_pretrained('/apdcephfs_cq10/share_1567347/share_info/llm_models/Llama-2-7b-chat-hf') 
+    generation_config = GenerationConfig.from_pretrained('/apdcephfs_cq10/share_1567347/share_info/llm_models/Llama-2-7b-chat-hf', do_sample=True, max_length=512)
+    model = LlamaForCausalLM.from_pretrained('/apdcephfs_cq10/share_1567347/share_info/llm_models/Llama-2-7b-chat-hf')
+    model.to('cuda:0')
+    print(generation_config)
+    results = []
+    for data in dataset[:20]:
         dialog = text_to_dialog(data['text'][0])
-        print(dilog_to_tokens(tokenizer, dialog))
+        print("Dialog>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>")
+        print(dialog)
+        outputs = model.generate(
+            (torch.tensor(dialog_to_tokens(tokenizer, dialog))).unsqueeze(0).to(model.device),
+            generation_config=generation_config
+        )
+        print("Reply>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>")
+        result = tokenizer.batch_decode(outputs, skip_special_tokens=True)
+        print(result)
+        results.append(result)
+    
+    with open(os.path.join(repo_dir, 'inference_results.json'), 'w') as f:
+        json.dump(results, f)
