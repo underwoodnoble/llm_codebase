@@ -29,7 +29,7 @@ class CustomArguments(transformers.TrainingArguments):
     preference_data_text_name: Optional[str] = field(default='texts', metadata={"help": "key in preference data that indicate texts"})
     preference_data_score_name: Optional[str] = field(default="scores", metadata={"help": "key in preference data that indicate scores"})
     length_penalty: Optional[float] = field(default=1.0, metadata={"help": "length penalty in RRHF"})
-    rrhf_weight: Optional[float] = field(default=0.1, metadata={"help": "weights of ranking loss"})
+    rrhf_weight: Optional[float] = field(default=1.0, metadata={"help": "weights of ranking loss"})
 
     # model arguments
     model_type: Optional[str] = field(default='bert', metadata={"help": "base model to use."})
