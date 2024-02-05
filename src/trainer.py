@@ -9,8 +9,6 @@ from typing import Any, Dict, List, Optional, Tuple, Union
 from utils import print_rank_0
 
 
-
-
 class RewardModelTrainer(Trainer):
     @classmethod
     def ranking_loss(logits: torch.Tensor, scores: torch.Tensor):
