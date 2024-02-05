@@ -1,11 +1,10 @@
 import torch
 from arguments import CustomArguments
-from transformers import PreTrainedTokenizer, PreTrainedModel
+from transformers import PreTrainedTokenizer
 from typing import List, Dict
 from copy import deepcopy
 from torch.nn.utils.rnn import pad_sequence
 from utils import print_rank_0
-from trl.trainer.utils import DPODataCollatorWithPadding
 
 
 def classfication_data_collator(tokenizer: PreTrainedTokenizer, args: CustomArguments):
