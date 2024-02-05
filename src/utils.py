@@ -117,11 +117,15 @@ def dpo_transform(data_list: List[Dict[str, List]], args: CustomArguments) -> Li
 
 def getDataset(args: CustomArguments, type='train') -> Dataset:
     if type == 'train':
+        if args.data_paths is None and args.data_dir is None:
+            return None
         if args.data_paths is not None:
             data_paths = args.data_paths
         else:
             data_paths = [os.path.join(args.data_dir, path) for path in os.listdir(args.data_dir)]
     else:
+        if args.eval_data_paths is None and args.eval_data_dir is None:
+            return None
         if args.eval_data_paths is not None:
             data_paths = args.eval_data_paths
         else:
