@@ -9,6 +9,7 @@ class CustomArguments(transformers.TrainingArguments):
     # task arguments
     task_type: Optional[str] = field(default='reward')
 
+    #######################################################################################
     # data arguments
     data_dir: str = field(default=None, metadata={"help": "the directory to load data."})
     data_paths: List[str] = field(default=None, metadata={"help": "train dataset paths"})
@@ -16,47 +17,47 @@ class CustomArguments(transformers.TrainingArguments):
     eval_data_dir: str = field(default=None, metadata={"help": "the directory to load evaluation datasets."})
     eval_data_paths: List[str] = field(default=None, metadata={"help": "evaluation dataset paths."})
 
-    # classification
+    sep_token: Optional[str] = field(default=None, metadata={"help": "the token that can use to seperate the query and answer in text"})
+
+    ## classification data
     cls_data_text_name: Optional[str] = field(default='text', metadata={"help": "text's names"})
     cls_data_label_name: Optional[str] = field(default='label', metadata={"help": "text label names"})
     cls_data_label_nums: Optional[int] = field(default=None, metadata={"help": "num of label types"})
 
-    # sft
+    ## sft data
     sft_data_prompt_name: Optional[str] = field(default='prompt', metadata={"help": "prompt name."})
     sft_data_answer_name: Optional[str] = field(default='answer', metadata={"help": "answer name"})
 
-    # preference training, dpo, reward...
+    ## preference data
     preference_data_text_name: Optional[str] = field(default='texts', metadata={"help": "key in preference data that indicate texts"})
     preference_data_score_name: Optional[str] = field(default="scores", metadata={"help": "key in preference data that indicate scores"})
-    length_penalty: Optional[float] = field(default=1.0, metadata={"help": "length penalty in RRHF"})
-    rrhf_weight: Optional[float] = field(default=1.0, metadata={"help": "weights of ranking loss"})
 
+    ## Weighted data
+    weighted_data_prompt_name: Optional[str] = field(default=None)
+    weighted_data_answer_name: Optional[str] = field(default=None)
+    weighted_data_score_name: Optional[str] = field(default=None)
+
+    #########################################################################################
     # model arguments
     model_type: Optional[str] = field(default='bert', metadata={"help": "base model to use."})
     model_name_or_path: Optional[str] = field(default=None, metadata={"help": "pretrained model path"})
     model_max_length: Optional[int] = field(default=512, metadata={"help": "the max sentence sequence length."})
     ignore_token_id: Optional[int] = field(default=-100, metadata={"help": "token id used to inplace query ids."})
     
-
+    #########################################################################################
     # training arguments
     truncation_side: Optional[str] = field(default='left', metadata={"help": "which side to truncate when sequence is too long."})
     padding_side: Optional[str] = field(default='right', metadata={"help": "which side to padding."})
+    only_predict_answer: Optional[bool] = field(default=True, metadata={"help": "Only predict the answer."})
 
     ## Reward model training arguments
     add_lm_loss: Optional[bool] = field(default=True, metadata={"help": "add language model loss when training reward model"})
     lm_loss_coeff: Optional[float] = field(default=0., metadata={"help": "the coefficient for language modeling loss."})
     lm_score_thresh: Optional[float] = field(default=0.85, metadata={"help": "the threshold to select response for language modeling."})
 
-    ## Language Model Training Arguments
-    only_predict_answer: Optional[bool] = field(default=True, metadata={"help": "Only predict the answer."})
-
-    ## Preference alignment training arguments
-    sep_token: Optional[str] = field(default=None, metadata={"help": "the token that can use to seperate the query and answer in preference data"})
-    
-    ## Contrastive learning
-    weighted_data_prompt_name: Optional[str] = field(default=None)
-    weighted_data_answer_name: Optional[str] = field(default=None)
-    weighted_data_score_name: Optional[str] = field(default=None)
+    ## RRHF
+    length_penalty: Optional[float] = field(default=1.0, metadata={"help": "length penalty in RRHF"})
+    rrhf_weight: Optional[float] = field(default=1.0, metadata={"help": "weights of ranking loss in RRHF"})
 
     ## DPO
     construct_method: Optional[str] = field(default="best_to_rest", metadata={"help": "The method used to construct preference pairs. [best_over_rest, best_over_worst, one_over_rest]"})
