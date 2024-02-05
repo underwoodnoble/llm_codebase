@@ -7,6 +7,34 @@ from torch.nn.utils.rnn import pad_sequence
 from utils import print_rank_0
 
 
+def _llm_tokenize(prompts: List[str], texts: List[str], tokenizer: PreTrainedTokenizer, args: CustomArguments) -> Dict[str, torch.Tensor]:
+    if not args.only_predict_answer:
+        encoding = tokenizer(texts, padding=True, truncation=True, add_special_tokens=True)
+        input_ids = torch.tensor(encoding['input_ids'])
+        attention_mask = torch.tensor(encoding['attention_mask'])
+        labels = torch.tensor(encoding['input_ids'])
+    else:
+        input_ids = []
+        labels = []
+        for prompt, text in zip(prompts, texts):
+            prompt_ids = tokenizer.encode(prompt, add_special_tokens=False)
+            text_ids = tokenizer.encode(text, add_special_tokens=True)
+            label = deepcopy(text_ids)
+            label[:len(prompt_ids)+1] = [args.ignore_token_id] * (len(prompt_ids) + 1)
+            input_ids.append(torch.tensor(text_ids[-args.model_max_length:]))
+            labels.append(torch.tensor(label[-args.model_max_length:]))
+        
+        input_ids = pad_sequence(input_ids, batch_first=True, padding_value=tokenizer.pad_token_id)
+        labels = pad_sequence(input_ids, batch_first=True, padding_value=tokenizer.pad_token_id)
+        attention_mask = torch.ne(input_ids, tokenizer.pad_token_id)
+
+    return {
+        "input_ids": input_ids,
+        "attention_mask": attention_mask,
+        "labels": labels
+    }
+    
+
 def classfication_data_collator(tokenizer: PreTrainedTokenizer, args: CustomArguments):
     def collator(examples):
         texts = []
@@ -63,36 +91,10 @@ def sft_data_collator(tokenizer: PreTrainedTokenizer, args: CustomArguments):
         prompts = []
         for example in examples:
             text = example['prompt'] + example['answer']
-            texts.append(text + tokenizer.eos_token)
+            texts.append(text)
             prompts.append(example['prompt'])
 
-        if not args.only_predict_answer:
-            encoding = tokenizer(texts, padding=True, truncation=True)
-            return {
-                'input_ids': torch.tensor(encoding['input_ids']),
-                'attention_mask': torch.tensor(encoding['attention_mask']),
-                'labels': torch.tensor(encoding['input_ids'])
-            }
-        else:
-            input_ids = []
-            labels = []
-            for prompt, text in zip(prompts, texts):
-                prompt_ids = tokenizer.encode(prompt, add_special_tokens=False)
-                text_ids = tokenizer.encode(text, add_special_tokens=True)
-                label = deepcopy(text_ids)
-                label[:len(prompt_ids)] = [args.ignore_token_id] * len(prompt_ids)
-                input_ids.append(torch.tensor(text_ids[-args.model_max_length:]))
-                labels.append(torch.tensor(label[-args.model_max_length:]))
-
-            input_ids = pad_sequence(input_ids, batch_first=True, padding_value=tokenizer.pad_token_id)
-            labels = pad_sequence(input_ids, batch_first=True, padding_value=tokenizer.pad_token_id)
-            attention_mask = torch.ne(input_ids, tokenizer.pad_token_id)
-
-            return {
-                "input_ids": input_ids,
-                "labels": labels,
-                "attention_mask": attention_mask
-            } 
+        return _llm_tokenize(prompts, texts, tokenizer, args)
     
     return collator
 
@@ -105,35 +107,19 @@ def rjs_data_collator(tokenizer: PreTrainedTokenizer, args: CustomArguments):
             scores = example['scores']
             best_text = texts[torch.argmax(torch.tensor(scores))]
             best_texts.append(best_text + tokenizer.eos_token)
+        
         if not args.only_predict_answer:
-            encoding = tokenizer(best_texts, padding=True, truncation=True, add_special_tokens=True)
-            return {
-                'input_ids': torch.tensor(encoding['input_ids']),
-                'attention_mask': torch.tensor(encoding['attention_mask']),
-                'labels': torch.tensor(encoding['input_ids'])
-            }
+            prompts = None
+            texts = best_texts
         else:
-            input_ids = []
-            labels = []
+            prompts = []
+            texts = []
             for text in best_texts:
-                query, _ = text.split(args.sep_token)
-                query_ids = tokenizer.encode(query, add_special_tokens=False)
-                text_ids = tokenizer.encode(text, add_special_tokens=True)
-                label = deepcopy(text_ids)
-                label[:len(query_ids)] = [args.ignore_token_id] * len(query_ids)
-                input_ids.append(torch.tensor(text_ids[-args.model_max_length:]))
-                labels.append(torch.tensor(label[-args.model_max_length:]))
+                prompt, answer = text.split(args.sep_token)
+                prompts.append(prompt)
+                texts.append(prompt + answer)
 
-            input_ids = pad_sequence(input_ids, batch_first=True, padding_value=tokenizer.pad_token_id)
-            labels = pad_sequence(input_ids, batch_first=True, padding_value=tokenizer.pad_token_id)
-            attention_mask = torch.ne(input_ids, tokenizer.pad_token_id)
-
-
-            return {
-                "input_ids": input_ids,
-                "labels": labels,
-                "attention_mask": attention_mask
-            }
+        return _llm_tokenize(prompts, texts, tokenizer, args)
 
     return collator
         
@@ -152,35 +138,24 @@ def rrhf_data_collator(tokenizer: PreTrainedTokenizer, args: CustomArguments):
             all_texts.extend(example['texts'])
             all_scores.extend(example['scores'])
         if not args.only_predict_answer:
-            encoding = tokenizer(all_texts, padding=True, truncation=True, add_special_tokens=True)
-            return {
-                "input_ids": torch.tensor(encoding['input_ids']).view(batch_size, num_sample, -1),
-                "attention_mask": torch.tensor(encoding['attention_mask']).view(batch_size, num_sample, -1),
-                "labels": torch.tensor(encoding['input_ids']).view(batch_size, num_sample, -1),
-                "scores": torch.tensor(all_scores).view(batch_size, num_sample)
-            }
+            prompts = None
+            texts = all_texts
         else:
-            input_ids = []
-            labels = []
+            prompts = []
+            texts = []
             for text in all_texts:
-                query, _ = text.split(args.sep_token)
-                query_ids = tokenizer.encode(query, add_special_tokens=False)
-                text_ids = tokenizer.encode(text, add_special_tokens=True)
-                label = deepcopy(text_ids)
-                label[:len(query_ids)] = [args.ignore_token_id] * len(query_ids)
-                input_ids.append(torch.tensor(text_ids[-args.model_max_length:]))
-                labels.append(torch.tensor(label[-args.model_max_length:]))
-        
-            input_ids = pad_sequence(input_ids, batch_first=True, padding_value=tokenizer.pad_token_id)
-            labels = pad_sequence(input_ids, batch_first=True, padding_value=tokenizer.pad_token_id)
-            attention_mask: torch.Tensor = torch.ne(input_ids, tokenizer.pad_token_id)
-
-            return {
-                "input_ids": input_ids.view(batch_size, num_sample, -1),
-                "labels": labels.view(batch_size, num_sample, -1),
-                "attention_mask": attention_mask.view(batch_size, num_sample, -1),
-                "scores": torch.tensor(all_scores).view(batch_size, num_sample)
-            }
+                prompt, answer = text.split(args.sep_token)
+                prompts.append(prompt)
+                texts.append(prompt + answer)
+            
+        ret = _llm_tokenize(prompts, texts, tokenizer, args)
+        ret['scores'] = torch.tensor(all_scores)
+        return {
+            "input_ids": ret['input_ids'].view(batch_size, num_sample, -1),
+            "labels": ret['labels'].view(batch_size, num_sample, -1),
+            "attention_mask": ret['attention_mask'].view(batch_size, num_sample, -1),
+            "scores": ret['scores'].view(batch_size, num_sample)
+        }
     
     return collator
 
@@ -192,39 +167,13 @@ def weighted_data_collator(tokenizer: PreTrainedTokenizer, args: CustomArguments
         scores = []
         for example in examples:
             text = example['prompt'] + example['answer']
-            texts.append(text + tokenizer.eos_token)
+            texts.append(text)
             prompts.append(example['prompt'])
             scores.append(example['score'])
 
-        if not args.only_predict_answer:
-            encoding = tokenizer(texts, padding=True, truncation=True)
-            return {
-                'input_ids': torch.tensor(encoding['input_ids']),
-                'attention_mask': torch.tensor(encoding['attention_mask']),
-                'labels': torch.tensor(encoding['input_ids']),
-                'scores': torch.tensor(scores)
-            }
-        else:
-            input_ids = []
-            labels = []
-            for prompt, text in zip(prompts, texts):
-                prompt_ids = tokenizer.encode(prompt, add_special_tokens=False)
-                text_ids = tokenizer.encode(text, add_special_tokens=True)
-                label = deepcopy(text_ids)
-                label[:len(prompt_ids)] = [args.ignore_token_id] * len(prompt_ids)
-                input_ids.append(torch.tensor(text_ids[-args.model_max_length:]))
-                labels.append(torch.tensor(label[-args.model_max_length:]))
-
-            input_ids = pad_sequence(input_ids, batch_first=True, padding_value=tokenizer.pad_token_id)
-            labels = pad_sequence(input_ids, batch_first=True, padding_value=tokenizer.pad_token_id)
-            attention_mask = torch.ne(input_ids, tokenizer.pad_token_id)
-
-            return {
-                "input_ids": input_ids,
-                "labels": labels,
-                "attention_mask": attention_mask,
-                "scores": torch.tensor(scores)
-            } 
+        ret = _llm_tokenize(prompts, texts, tokenizer, args)
+        ret["scores"] = torch.tensor(scores)
+        return ret
     
     return collator
 
