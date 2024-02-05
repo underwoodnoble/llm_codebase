@@ -1,11 +1,7 @@
 from arguments import CustomArguments
-from transformers import HfArgumentParser, Trainer
-from trainer import RewardModelTrainer, WeightedTrainer, RRHFTrainer
+from transformers import HfArgumentParser
 from utils import print_rank_0, getDataset, loadTokenizerAndModel
-from collator import (reward_data_collator, sft_data_collator, rjs_data_collator, 
-                    rrhf_data_collator, weighted_data_collator, classfication_data_collator)
-from metrics import compute_reward_metrics, compute_classification_metrics
-from trl import DPOTrainer
+from metrics import compute_classification_metrics
 
 
 def main():
@@ -28,6 +24,9 @@ def main():
     print_rank_0(model)
 
     if args.task_type == 'reward':
+        from trainer import RewardModelTrainer
+        from collator import reward_data_collator
+        from metrics import compute_reward_metrics
         trainer = RewardModelTrainer(
             model=model,
             tokenizer=tokenizer,
@@ -38,10 +37,16 @@ def main():
             compute_metrics=compute_reward_metrics
             )
     elif args.task_type in ['sft', 'offline_rejection_sampling']:
+        from transformers import Trainer
         if args.task_type == 'sft':
+            from collator import sft_data_collator
+
             print_rank_0("Using sft data collator")
             data_collator = sft_data_collator(tokenizer, args)
+
         elif args.task_type == 'offline_rejection_sampling':
+            from collator import rjs_data_collator
+
             print_rank_0("Using rejection sampling data collator")
             data_collator = rjs_data_collator(tokenizer, args)
 
@@ -53,7 +58,11 @@ def main():
             eval_dataset=eval_dataset,
             data_collator=data_collator
         )
+
     elif args.task_type == 'weighted_learning':
+        from trainer import WeightedTrainer
+        from collator import weighted_data_collator
+
         print_rank_0("Using weighted learning data collator")
         data_collator = weighted_data_collator(tokenizer, args)
 
@@ -65,7 +74,11 @@ def main():
             eval_dataset=eval_dataset,
             data_collator=data_collator
         )
+
     elif args.task_type == 'classification':
+        from collator import classfication_data_collator
+        from transformers import Trainer
+
         print_rank_0("Using classification data collator")
         data_collator = classfication_data_collator(tokenizer, args)
         trainer = Trainer(
@@ -77,7 +90,11 @@ def main():
             data_collator=data_collator,
             compute_metrics=compute_classification_metrics
         )
+
     elif args.task_type == 'offline_RRHF':
+        from collator import rrhf_data_collator
+        from trainer import RRHFTrainer
+
         print_rank_0("Using offline RRHF data collator")
         data_collator = rrhf_data_collator(tokenizer, args)
         trainer = RRHFTrainer(
@@ -88,7 +105,10 @@ def main():
             eval_dataset=eval_dataset,
             tokenizer=tokenizer
         )
+
     elif args.task_type == 'DPO':
+        from trl import DPOTrainer
+        
         print_rank_0("Using DPO data collator")
         trainer = DPOTrainer(
             model=model,
