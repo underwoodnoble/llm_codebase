@@ -1,7 +1,7 @@
 import json
 
 new_dataset = []
-with open("/apdcephfs_cq10/share_1567347/nobelhu/code/llm_codebase/data/sft_data/alpaca_data.json", 'r') as f:
+with open("data/sft_data/alpaca_data.json", 'r') as f:
     
     dataset = json.load(f)
     for data in dataset:
@@ -17,5 +17,5 @@ with open("/apdcephfs_cq10/share_1567347/nobelhu/code/llm_codebase/data/sft_data
         new_dataset.append(new_data)
 
 
-with open("/apdcephfs_cq10/share_1567347/nobelhu/code/llm_codebase/data/sft_data/alpaca_train.json", 'w') as f:
+with open("data/sft_data/alpaca_train.json", 'w') as f:
     json.dump(new_dataset, f)
