@@ -1,19 +1,29 @@
-from transformers import LlamaTokenizer, LlamaForCausalLM, GenerationConfig
+from transformers import LlamaTokenizer, LlamaForCausalLM, GenerationConfig, PreTrainedTokenizer, PreTrainedModel
 import os
 import json
-from typing import List, Dict
+from typing import List, Dict, Tuple
 import torch
+from argparse import ArgumentParser
+from torch.utils.data import DataLoader
+from datasets import Dataset
+from utils import read_json_or_jsonl_data
+from accelerate import PartialState
 
 
-repo_dir = "/apdcephfs_cq10/share_1567347/nobelhu/code/llm_codebase"
+def load_dataset(args):
+    data_list = read_json_or_jsonl_data(args.data_path)
+    if args.debug_mode:
+        data_list = data_list[:100]
+    if args.add_data_id:
+        for i, data in enumerate(data_list):
+            data['id'] = i
+    return data_list
 
-def text_to_dialog(text: str):
+def hh_to_dialog(text: str):
     temps = [t.split('\n\nAssistant: ') for t in text.split('\n\nHuman: ') if len(t) > 0]
     ret = []
     for temp in temps:
         ret.extend(temp)
-    print("ret>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>.")
-    print(ret)
     dialog = []
     role = 'user'
     for text in ret[:-1]:
@@ -26,7 +36,7 @@ def text_to_dialog(text: str):
             role = 'user'
     return dialog
 
-def dialog_to_tokens(tokenizer: LlamaTokenizer, dialog: List[Dict[str, str]]):
+def dialog_to_llama_tokens(tokenizer: LlamaTokenizer, dialog: List[Dict[str, str]]):
     B_SYS, E_SYS = "<<SYS>>\n", "\n<</SYS>>\n\n"
     B_INST, E_INST = "[INST]", "[/INST]"
     if dialog[0]['role'] == 'system':
@@ -66,26 +76,90 @@ def dialog_to_tokens(tokenizer: LlamaTokenizer, dialog: List[Dict[str, str]]):
     )
     return dialog_tokens
 
-with open(os.path.join(repo_dir, "data/preference_data/helpful/helpful.test.json"), 'r') as f:
-    dataset = json.load(f)
-    tokenizer = LlamaTokenizer.from_pretrained('/apdcephfs_cq10/share_1567347/share_info/llm_models/Llama-2-7b-chat-hf') 
-    generation_config = GenerationConfig.from_pretrained('/apdcephfs_cq10/share_1567347/share_info/llm_models/Llama-2-7b-chat-hf', do_sample=True, max_length=512)
-    model = LlamaForCausalLM.from_pretrained('/apdcephfs_cq10/share_1567347/share_info/llm_models/Llama-2-7b-chat-hf')
-    model.to('cuda:0')
-    print(generation_config)
-    results = []
-    for data in dataset[:20]:
-        dialog = text_to_dialog(data['text'][0])
-        print("Dialog>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>")
-        print(dialog)
-        outputs = model.generate(
-            (torch.tensor(dialog_to_tokens(tokenizer, dialog))).unsqueeze(0).to(model.device),
-            generation_config=generation_config
-        )
-        print("Reply>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>")
-        result = tokenizer.batch_decode(outputs, skip_special_tokens=True)
-        print(result)
-        results.append(result)
+
+def load_tokenizer_and_model(args) -> Tuple[PreTrainedModel, PreTrainedModel]:
+    if args.model_type == 'llama':
+        tokenizer = LlamaTokenizer.from_pretrained(args.model_path)
+        model = LlamaForCausalLM.from_pretrained(args.model_path)
+    return tokenizer, model
+
+
+def llm_inference(tokenizer: PreTrainedTokenizer, model: PreTrainedModel, 
+                  generation_config: GenerationConfig, dataset: List[Dict[str, str]], args, first_id):
+    new_dataset = []
+    for data in dataset:
+        answers = []
+        for _ in range(args.sample_num):
+            prompt = data['prompt']
+            print("prompt>>>>>>>>>>>>>>>>>>>>>>>>>>>>")
+            print(prompt)
+            input_ids = [tokenizer.bos_token_id] + tokenizer.encode(prompt, add_special_tokens=False)
+            output = model.generate(torch.tensor(input_ids).unsqueeze(0).to(model.device),
+                           generation_config=generation_config)
+            response = tokenizer.batch_decode(output, skip_special_tokens=True)
+            answer = response[0][len(prompt):]
+            print("answer>>>>>>>>>>>>>>>>>>>>>>>>>>>")
+            print(answer)
+            answers.append(answer)
+        new_data = {"id": data['id'], "prompt": prompt, "answer": answers}
+        new_dataset.append(new_data)
+    with open(args.save_path, 'a+') as f:
+        for data in new_dataset:
+            f.write(json.dumps(data) + '\n')
+            
+def main(args):
+    distributed_state = PartialState()
+
+    if distributed_state.is_main_process:
+        print("Loading Dataset")
+    dataset = load_dataset(args)
+    if distributed_state.is_main_process:
+        print("Loading Model")
+    tokenizer, model = load_tokenizer_and_model(args)
+    model.to(distributed_state.device)
+    for i in range(0, len(dataset), args.chunk_size):
+        with distributed_state.split_between_processes(dataset[i:i+args.chunk_size]) as sub_dataset:
+            if args.task_type == 'llm_inference':
+                generation_config = GenerationConfig.from_pretrained(args.model_path, do_sample=True, max_new_tokens=args.max_new_tokens)
+                llm_inference(tokenizer, model, generation_config, sub_dataset, args, first_id=i)
+
+
+
+if __name__ == '__main__':
+    parser = ArgumentParser()
+    parser.add_argument(
+        '--model_type', type=str, choices=['llama']
+    )
+    parser.add_argument(
+        '--task_type', type=str, choices=['llm_inference']
+    )
+    parser.add_argument(
+        '--model_path', type=str
+    )
+    parser.add_argument(
+        '--data_path', type=str
+    )
+    parser.add_argument(
+        '--add_data_id', type=bool, default=True
+    )
+    parser.add_argument(
+        '--save_path', type=str
+    )
+    parser.add_argument(
+        '--data_type', type=str, choices=['helpful_and_harmless']
+    )
+    parser.add_argument(
+        '--max_new_tokens', type=int, default=256
+    )
+    parser.add_argument(
+        '--chunk_size', type=int, default=128
+    )
+    parser.add_argument(
+        '--sample_num', type=int, default=4
+    )
     
-    with open(os.path.join(repo_dir, 'inference_results.json'), 'w') as f:
-        json.dump(results, f)
+    parser.add_argument(
+        '--debug_mode', type=bool, default=False
+    )
+    args = parser.parse_args()
+    main(args)
