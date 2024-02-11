@@ -5,10 +5,11 @@ from accelerate import PartialState
 from accelerate.utils import gather_object
 from torch.utils.data import DataLoader
 from datasets import Dataset
-from test import compute_ppl
+from test import compute_ppl, gpt_winer
 import json
 from tqdm import tqdm
 import torch
+from multiprocessing import Pool
 
 
 def get_args():
@@ -23,14 +24,19 @@ def get_args():
     parser.add_argument('--cache_size', type=int, default=8)
     parser.add_argument('--data_prompt_name', type=str, default='prompt')
     parser.add_argument('--data_answer_name', type=str, default='answer')
+    parser.add_argument('--pair_data_prompt_name', type=str, default='prompt')
+    parser.add_argument('--pair_data_answers_name', type=str, default='answers')
+    parser.add_argument('--model_A_name', type=str, default='model_A')
+    parser.add_argument('--model_B_name', type=str, default='model_B')
     parser.add_argument('--model_max_length', type=int, default=512)
     parser.add_argument('--debug_mode', type=bool, default=False)
     parser.add_argument('--ppl_outlier_gate', type=float, default=10000)
+    parser.add_argument('--num_of_gpt_processes', type=int, default=10)
     args = parser.parse_args()
     return args
 
 
-def main(args):
+def ppl_evaluation(args):
     distributed_state = PartialState()
     dataset = getTestDataset(args)
     tokenizer, model = loadTestTokenizerAndModel(args)
@@ -70,6 +76,57 @@ def main(args):
         print(f"Num of nan: {num_of_nan}")
         print("Average valid ppl: ", (all_ppl * mask.float()).nanmean().item())
         print("exp(average loss): ", torch.exp(all_loss.nanmean()).item())
+
+
+def win_rate(args):
+    data_list = getTestDataset(args)
+
+    def gpt_winer_evaluate(prompt: str, response_A: str, response_B: str, model_A: str, model_B: str):
+        winer = gpt_winer(prompt, response_A, response_B, model_A, model_B)
+        data = {
+            "prompt": prompt,
+            "answers": [response_A, response_B],
+            "winer": winer
+        }
+        return data
+
+    pool = Pool(10)
+    ties = 0
+    first_wins = 0
+    second_wins = 0
+    for i in range(0, len(data_list), args.num_of_gpt_processes):
+        sub_dataset = data_list[i:i+args.num_of_gpt_processes]
+        new_dataset = []
+        for data in sub_dataset:
+            prompt = data['prompt']
+            response_A = data['answer'][0]
+            response_B = data['answer'][1]
+            model_A = args.model_A_name
+            model_B = args.model_B_name
+            new_dataset.append((prompt, response_A, response_B, model_A, model_B))
+
+        results = pool.imap(gpt_winer_evaluate, new_dataset)
+        for i in range(len(results)):
+            result = results[i]
+            if result == 'tie':
+                ties += 1
+            elif result == model_A:
+                first_wins += 1
+            elif result == model_B:
+                second_wins += 1
+            sub_dataset[i]['winer'] == result
+            with open(args.save_dir, 'a+') as f:
+                f.write(json.dumps(sub_dataset[i])+'\n')
+
+            
+
+    
+def main(args):
+    if args.task_type == 'ppl':
+        ppl_evaluation(args)
+    elif args.task_type == 'win_rate':
+        win_rate(args)
+
 
 
 if __name__ == '__main__':
