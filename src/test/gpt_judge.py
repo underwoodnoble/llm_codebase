@@ -29,7 +29,7 @@ def _winer(prompt, response_A, response_B, model_A_name='model_A', model_B_name=
         try:
             response = openai.ChatCompletion.create(model='gpt-4-1106-preview-nlp',
                                                     messages=[{"role": "user", "content": prompt}])
-            ret = response['choices'][0]['message']
+            ret = response['choices'][0]['message']['content']
             if 'model_A is better' in ret:
                 return model_A_name
             elif 'model_B is better' in ret:
