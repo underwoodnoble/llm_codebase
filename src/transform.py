@@ -47,6 +47,16 @@ def data_to_dialog(dataset, args):
                     "content": assistant_message
                 }
             ])
+        elif args.input_format == 'dialog':
+            new_data = []
+            if data[0]['role'] == args.system_name:
+                new_data.append({
+                    "role": "system",
+                    "content": data[0]['content']
+                })
+            for turn in data[1:]:
+                pass
+
     
     return new_dataset
 

@@ -11,7 +11,6 @@ from tqdm import tqdm
 import torch
 from multiprocessing import Pool
 
-
 def get_args():
     parser = ArgumentParser()
     parser.add_argument('--model_name_or_path', type=str)
@@ -19,7 +18,7 @@ def get_args():
     parser.add_argument('--data_dir', type=str, default=None)
     parser.add_argument('--save_path', type=str)
     parser.add_argument('--model_type', type=str, choices=['llama'])
-    parser.add_argument('--task_type', type=str, choices=['ppl'])
+    parser.add_argument('--task_type', type=str, choices=['ppl', 'win_rate'])
     parser.add_argument('--batch_size', type=int)
     parser.add_argument('--cache_size', type=int, default=8)
     parser.add_argument('--data_prompt_name', type=str, default='prompt')
@@ -32,6 +31,8 @@ def get_args():
     parser.add_argument('--debug_mode', type=bool, default=False)
     parser.add_argument('--ppl_outlier_gate', type=float, default=10000)
     parser.add_argument('--num_of_gpt_processes', type=int, default=10)
+    parser.add_argument('--openai_api_key', type=str)
+    parser.add_argument('--openai_api_base', type=str)
     args = parser.parse_args()
     return args
 
@@ -78,19 +79,21 @@ def ppl_evaluation(args):
         print("exp(average loss): ", torch.exp(all_loss.nanmean()).item())
 
 
+def gpt_winer_evaluate(params):
+    prompt, response_A, response_B, model_A, model_B, api_key, api_base = params
+    winer = gpt_winer(prompt, response_A, response_B, model_A, model_B, api_key, api_base)
+    data = {
+        "prompt": prompt,
+        "answers": [response_A, response_B],
+        "winer": winer
+    }
+    return data
+
+
 def win_rate(args):
     data_list = getTestDataset(args)
 
-    def gpt_winer_evaluate(prompt: str, response_A: str, response_B: str, model_A: str, model_B: str):
-        winer = gpt_winer(prompt, response_A, response_B, model_A, model_B)
-        data = {
-            "prompt": prompt,
-            "answers": [response_A, response_B],
-            "winer": winer
-        }
-        return data
-
-    pool = Pool(10)
+    pool = Pool(args.num_of_gpt_processes)
     ties = 0
     first_wins = 0
     second_wins = 0
@@ -99,24 +102,28 @@ def win_rate(args):
         new_dataset = []
         for data in sub_dataset:
             prompt = data['prompt']
-            response_A = data['answer'][0]
-            response_B = data['answer'][1]
+            response_A = data['answers'][0]
+            response_B = data['answers'][1]
             model_A = args.model_A_name
             model_B = args.model_B_name
-            new_dataset.append((prompt, response_A, response_B, model_A, model_B))
+            new_dataset.append((prompt, response_A, response_B, model_A, model_B, args.openai_api_key, args.openai_api_base))
 
         results = pool.imap(gpt_winer_evaluate, new_dataset)
-        for i in range(len(results)):
-            result = results[i]
-            if result == 'tie':
+        j = 0
+        for result in results:
+            if result['winer'] == 'tie':
                 ties += 1
-            elif result == model_A:
+            elif result['winer'] == model_A:
                 first_wins += 1
-            elif result == model_B:
+            elif result['winer'] == model_B:
                 second_wins += 1
-            sub_dataset[i]['winer'] == result
-            with open(args.save_dir, 'a+') as f:
-                f.write(json.dumps(sub_dataset[i])+'\n')
+            print(result)
+            with open(args.save_path, 'a') as f:
+                f.write(json.dumps(result)+'\n')
+            j += 1
+    print(f"{args.model_A_name} win rate: {first_wins/(len(data_list))}")
+    print(f"{args.model_B_name} win rate: {second_wins/(len(data_list))}")
+    print(f"tie rate: {ties/(len(data_list))}")
 
             
 

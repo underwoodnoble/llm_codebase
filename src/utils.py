@@ -251,7 +251,17 @@ def getTestDataset(args) -> List[Dict[str, Any]]:
                 }
                 new_data_list.append(new_data)
             data_list = new_data_list
-
+    elif args.task_type == 'win_rate':
+        if args.pair_data_prompt_name != 'prompt' or args.pair_data_answers_name != 'answers':
+            new_data_list = []
+            for data in data_list:
+                new_data = {
+                    "prompt": data[args.pair_data_prompt_name],
+                    "answers": data[args.pair_data_answers_name]
+                }
+                new_data_list.append(new_data)
+            data_list = new_data_list
+            
     if args.debug_mode:
         data_list = data_list[:100]
     return data_list
