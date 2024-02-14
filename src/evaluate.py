@@ -102,7 +102,7 @@ def gpt_winer_evaluate(params):
 
 def win_rate(args):
     data_list = getTestDataset(args)
-    ties, first_wins, second_wins = 0, 0, 0
+    first_wins, second_wins, equally_goods, equally_bads, ties = 0, 0, 0, 0, 0
 
     new_dataset = []
     for data in data_list:
@@ -116,20 +116,25 @@ def win_rate(args):
     with ThreadPoolExecutor(max_workers=args.num_of_gpt_threads) as pool:
         results = pool.map(gpt_winer_evaluate, new_dataset)
 
-    j = 0
     for result in results:
-        if result['winer'] == 'tie':
-            ties += 1
+        if result['winer'] == 'equally good':
+            equally_goods += 1
+        elif result['winer'] == 'equally bad':
+            equally_bads += 1
         elif result['winer'] == model_A:
             first_wins += 1
         elif result['winer'] == model_B:
             second_wins += 1
+        elif result['winer'] == 'tie':
+            ties += 1
+
         with open(args.save_path, 'a') as f:
             f.write(json.dumps(result)+'\n')
-        j += 1
     print(f"{args.model_A_name} win rate: {first_wins/(len(data_list))}")
     print(f"{args.model_B_name} win rate: {second_wins/(len(data_list))}")
-    print(f"tie rate: {ties/(len(data_list))}")            
+    print(f"equally good rate: {equally_goods/(len(data_list))}")            
+    print(f"equally bad rate: {equally_bads/len(data_list)}")
+    print(f"tie rate: {ties/len(data_list)}")
 
     
 def main(args):
