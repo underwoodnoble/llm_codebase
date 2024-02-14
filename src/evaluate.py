@@ -23,19 +23,21 @@ def get_args():
     parser.add_argument('--task_type', type=str, choices=['ppl', 'win_rate', 'mt_win_rate'])
     parser.add_argument('--batch_size', type=int)
     parser.add_argument('--cache_size', type=int, default=8)
+    parser.add_argument('--model_max_length', type=int, default=512)
+    parser.add_argument('--ppl_outlier_gate', type=float, default=10000)
+
     parser.add_argument('--data_prompt_name', type=str, default='prompt')
     parser.add_argument('--data_answer_name', type=str, default='answer')
     parser.add_argument('--pair_data_prompt_name', type=str, default='prompt')
     parser.add_argument('--pair_data_answers_name', type=str, default='answers')
     parser.add_argument('--model_A_name', type=str, default='model_A')
     parser.add_argument('--model_B_name', type=str, default='model_B')
-    parser.add_argument('--model_max_length', type=int, default=512)
-    parser.add_argument('--debug_mode', type=bool, default=False)
-    parser.add_argument('--ppl_outlier_gate', type=float, default=10000)
-    parser.add_argument('--num_of_gpt_processes', type=int, default=10)
     parser.add_argument('--num_of_gpt_threads', type=int, default=32)
     parser.add_argument('--openai_api_key', type=str)
     parser.add_argument('--openai_api_base', type=str)
+    parser.add_argument('--prompt_type', type=str, default='union', choices=['union', 'helpful', 'harmless'])
+
+    parser.add_argument('--debug_mode', type=bool, default=False)
     args = parser.parse_args()
     return args
 
@@ -83,12 +85,16 @@ def ppl_evaluation(args):
 
 
 def gpt_winer_evaluate(params):
-    prompt, response_A, response_B, model_A, model_B, api_key, api_base = params
-    winer = gpt_winer(prompt, response_A, response_B, api_key, api_base)
+    prompt, response_A, response_B, model_A, model_B, api_key, api_base, prompt_type = params
+    winer = gpt_winer(prompt, response_A, response_B, api_key, api_base, prompt_type)
+    if winer == 'model_A':
+        winer = model_A
+    elif winer == 'model_B':
+        winer = model_B
     data = {
         "prompt": prompt,
         "answers": [response_A, response_B],
-        "winer": model_A if winer=='model_A' else model_B
+        "winer": winer
     }
     print(data)
     return data
@@ -105,7 +111,7 @@ def win_rate(args):
         response_B = data['answers'][1]
         model_A = args.model_A_name
         model_B = args.model_B_name
-        new_dataset.append((prompt, response_A, response_B, model_A, model_B, args.openai_api_key, args.openai_api_base))
+        new_dataset.append((prompt, response_A, response_B, model_A, model_B, args.openai_api_key, args.openai_api_base, args.prompt_type))
 
     with ThreadPoolExecutor(max_workers=args.num_of_gpt_threads) as pool:
         results = pool.map(gpt_winer_evaluate, new_dataset)
