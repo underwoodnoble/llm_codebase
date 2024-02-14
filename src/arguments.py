@@ -17,7 +17,7 @@ class CustomArguments(transformers.TrainingArguments):
     eval_data_dir: str = field(default=None, metadata={"help": "the directory to load evaluation datasets."})
     eval_data_paths: List[str] = field(default=None, metadata={"help": "evaluation dataset paths."})
 
-    sep_token: Optional[str] = field(default=None, metadata={"help": "the token that can use to seperate the query and answer in text"})
+    sep_token: Optional[str] = field(default='<sep>', metadata={"help": "the token that can use to seperate the query and answer in text"})
 
     ## classification data
     cls_data_text_name: Optional[str] = field(default='text', metadata={"help": "text's names"})
@@ -43,6 +43,7 @@ class CustomArguments(transformers.TrainingArguments):
     model_name_or_path: Optional[str] = field(default=None, metadata={"help": "pretrained model path"})
     model_max_length: Optional[int] = field(default=512, metadata={"help": "the max sentence sequence length."})
     ignore_token_id: Optional[int] = field(default=-100, metadata={"help": "token id used to inplace query ids."})
+    set_llama_special_token: Optional[bool] = field(default=True, metadata={"help": "whether or not add special token in tokenizer."})
     
     #########################################################################################
     # training arguments
