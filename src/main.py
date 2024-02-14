@@ -9,6 +9,7 @@ def main():
     args: CustomArguments = parser.parse_args_into_dataclasses()[0]
     print_rank_0(args)
 
+    print_rank_0("Loading data>>>>>>>>>>>>>>>>>>>>>>>>>>>")
     if args.do_train:
         train_dataset = getDataset(args, type='train')
     eval_dataset = getDataset(args, type='eval')
@@ -125,6 +126,8 @@ def main():
         )
 
     trainer.train()
+    trainer.save_state()
+    trainer.save_model(output_dir=args.output_dir)
 
 if __name__ == '__main__':
     main()
