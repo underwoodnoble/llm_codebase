@@ -10,6 +10,8 @@ import json
 from tqdm import tqdm
 import torch
 from multiprocessing import Pool
+from concurrent.futures import ThreadPoolExecutor
+import time
 
 def get_args():
     parser = ArgumentParser()
@@ -18,7 +20,7 @@ def get_args():
     parser.add_argument('--data_dir', type=str, default=None)
     parser.add_argument('--save_path', type=str)
     parser.add_argument('--model_type', type=str, choices=['llama'])
-    parser.add_argument('--task_type', type=str, choices=['ppl', 'win_rate'])
+    parser.add_argument('--task_type', type=str, choices=['ppl', 'win_rate', 'mt_win_rate'])
     parser.add_argument('--batch_size', type=int)
     parser.add_argument('--cache_size', type=int, default=8)
     parser.add_argument('--data_prompt_name', type=str, default='prompt')
@@ -31,6 +33,7 @@ def get_args():
     parser.add_argument('--debug_mode', type=bool, default=False)
     parser.add_argument('--ppl_outlier_gate', type=float, default=10000)
     parser.add_argument('--num_of_gpt_processes', type=int, default=10)
+    parser.add_argument('--num_of_gpt_threads', type=int, default=32)
     parser.add_argument('--openai_api_key', type=str)
     parser.add_argument('--openai_api_base', type=str)
     args = parser.parse_args()
@@ -81,51 +84,46 @@ def ppl_evaluation(args):
 
 def gpt_winer_evaluate(params):
     prompt, response_A, response_B, model_A, model_B, api_key, api_base = params
-    winer = gpt_winer(prompt, response_A, response_B, model_A, model_B, api_key, api_base)
+    winer = gpt_winer(prompt, response_A, response_B, api_key, api_base)
     data = {
         "prompt": prompt,
         "answers": [response_A, response_B],
-        "winer": winer
+        "winer": model_A if winer=='model_A' else model_B
     }
+    print(data)
     return data
 
 
 def win_rate(args):
     data_list = getTestDataset(args)
+    ties, first_wins, second_wins = 0, 0, 0
 
-    pool = Pool(args.num_of_gpt_processes)
-    ties = 0
-    first_wins = 0
-    second_wins = 0
-    for i in range(0, len(data_list), args.num_of_gpt_processes):
-        sub_dataset = data_list[i:i+args.num_of_gpt_processes]
-        new_dataset = []
-        for data in sub_dataset:
-            prompt = data['prompt']
-            response_A = data['answers'][0]
-            response_B = data['answers'][1]
-            model_A = args.model_A_name
-            model_B = args.model_B_name
-            new_dataset.append((prompt, response_A, response_B, model_A, model_B, args.openai_api_key, args.openai_api_base))
+    new_dataset = []
+    for data in data_list:
+        prompt = data['prompt']
+        response_A = data['answers'][0]
+        response_B = data['answers'][1]
+        model_A = args.model_A_name
+        model_B = args.model_B_name
+        new_dataset.append((prompt, response_A, response_B, model_A, model_B, args.openai_api_key, args.openai_api_base))
 
-        results = pool.imap(gpt_winer_evaluate, new_dataset)
-        j = 0
-        for result in results:
-            if result['winer'] == 'tie':
-                ties += 1
-            elif result['winer'] == model_A:
-                first_wins += 1
-            elif result['winer'] == model_B:
-                second_wins += 1
-            print(result)
-            with open(args.save_path, 'a') as f:
-                f.write(json.dumps(result)+'\n')
-            j += 1
+    with ThreadPoolExecutor(max_workers=args.num_of_gpt_threads) as pool:
+        results = pool.map(gpt_winer_evaluate, new_dataset)
+
+    j = 0
+    for result in results:
+        if result['winer'] == 'tie':
+            ties += 1
+        elif result['winer'] == model_A:
+            first_wins += 1
+        elif result['winer'] == model_B:
+            second_wins += 1
+        with open(args.save_path, 'a') as f:
+            f.write(json.dumps(result)+'\n')
+        j += 1
     print(f"{args.model_A_name} win rate: {first_wins/(len(data_list))}")
     print(f"{args.model_B_name} win rate: {second_wins/(len(data_list))}")
-    print(f"tie rate: {ties/(len(data_list))}")
-
-            
+    print(f"tie rate: {ties/(len(data_list))}")            
 
     
 def main(args):
@@ -138,4 +136,7 @@ def main(args):
 
 if __name__ == '__main__':
     args = get_args()
+    start=time.time()
     main(args)
+    end=time.time()
+    print(f"Time: {end-start}")
