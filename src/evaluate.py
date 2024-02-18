@@ -102,7 +102,7 @@ def gpt_winer_evaluate(params):
 
 def win_rate(args):
     data_list = getTestDataset(args)
-    first_wins, second_wins, equally_goods, equally_bads, ties = 0, 0, 0, 0, 0
+    first_wins, second_wins, equally_goods, equally_bads, ties, errors = 0, 0, 0, 0, 0, 0
 
     new_dataset = []
     for data in data_list:
@@ -127,14 +127,21 @@ def win_rate(args):
             second_wins += 1
         elif result['winer'] == 'tie':
             ties += 1
+        elif result['winer'] == 'error':
+            errors += 1
 
         with open(args.save_path, 'a') as f:
             f.write(json.dumps(result)+'\n')
+    print(f"prompt type: {args.prompt_type}")
     print(f"{args.model_A_name} win rate: {first_wins/(len(data_list))}")
     print(f"{args.model_B_name} win rate: {second_wins/(len(data_list))}")
     print(f"equally good rate: {equally_goods/(len(data_list))}")            
     print(f"equally bad rate: {equally_bads/len(data_list)}")
     print(f"tie rate: {ties/len(data_list)}")
+    print(f"error rate: {errors/len(data_list)}")
+    print(f"normalized {args.model_A_name} win rate: {first_wins/(first_wins + second_wins + equally_bads + equally_goods + ties)}")
+    print(f"normalized {args.model_B_name} win rate: {second_wins/(first_wins + second_wins + equally_bads + equally_goods + ties)}")
+    print(f"normalized tie rate: {(equally_bads + equally_goods + ties)/(first_wins + second_wins + equally_bads + equally_goods + ties)}")
 
     
 def main(args):
