@@ -8,25 +8,23 @@ from utils import print_rank_0
 
 
 def _llm_tokenize(prompts: List[str], texts: List[str], tokenizer: PreTrainedTokenizer, args: CustomArguments) -> Dict[str, torch.Tensor]:
-    if not args.only_predict_answer:
-        encoding = tokenizer(texts, padding=True, truncation=True, add_special_tokens=True)
-        input_ids = torch.tensor(encoding['input_ids'])
-        attention_mask = torch.tensor(encoding['attention_mask'])
-        labels = torch.tensor(encoding['input_ids'])
-    else:
-        input_ids = []
-        labels = []
-        for prompt, text in zip(prompts, texts):
-            prompt_ids = tokenizer.encode(prompt, add_special_tokens=False)
-            text_ids = tokenizer.encode(text, add_special_tokens=True)
-            label = deepcopy(text_ids)
+    input_ids = []
+    labels = []
+    for prompt, text in zip(prompts, texts):
+        prompt_ids = tokenizer.encode(prompt, add_special_tokens=False)
+        text_ids = tokenizer.encode(text, add_special_tokens=True)
+        label = deepcopy(text_ids)
+        if not args.only_predict_answer:
             label[:len(prompt_ids)+1] = [args.ignore_token_id] * (len(prompt_ids) + 1)
-            input_ids.append(torch.tensor(text_ids[-args.model_max_length:]))
-            labels.append(torch.tensor(label[-args.model_max_length:]))
-        
-        input_ids = pad_sequence(input_ids, batch_first=True, padding_value=tokenizer.pad_token_id)
+        input_ids.append(torch.tensor(text_ids[-args.model_max_length:]))
+        labels.append(torch.tensor(label[-args.model_max_length:]))
+    
+    input_ids = pad_sequence(input_ids, batch_first=True, padding_value=tokenizer.pad_token_id)
+    if args.pad_labels_with_ignore:
+        labels = pad_sequence(input_ids, batch_first=True, padding_value=args.ignore_token_id)
+    else:
         labels = pad_sequence(input_ids, batch_first=True, padding_value=tokenizer.pad_token_id)
-        attention_mask = torch.ne(input_ids, tokenizer.pad_token_id)
+    attention_mask = torch.ne(input_ids, tokenizer.pad_token_id)
 
     return {
         "input_ids": input_ids,
