@@ -1,11 +1,9 @@
-from transformers import LlamaTokenizer, LlamaForCausalLM, GenerationConfig, PreTrainedTokenizer, PreTrainedModel
-import os
+from transformers import LlamaTokenizer, LlamaForCausalLM, GenerationConfig, PreTrainedTokenizer, PreTrainedModel, AutoTokenizer
+from model.RewardModel import PythiaRewardModel, LlamaRewardModel
 import json
 from typing import List, Dict, Tuple
 import torch
 from argparse import ArgumentParser
-from torch.utils.data import DataLoader
-from datasets import Dataset
 from utils import read_json_or_jsonl_data
 from accelerate import PartialState
 
@@ -78,14 +76,23 @@ def dialog_to_llama_tokens(tokenizer: LlamaTokenizer, dialog: List[Dict[str, str
 
 
 def load_tokenizer_and_model(args) -> Tuple[PreTrainedModel, PreTrainedModel]:
-    if args.model_type == 'llama':
-        tokenizer = LlamaTokenizer.from_pretrained(args.model_path)
-        model = LlamaForCausalLM.from_pretrained(args.model_path)
+    if args.task_type == 'llm_inference':
+        if args.model_type == 'llama':
+            tokenizer = LlamaTokenizer.from_pretrained(args.model_path)
+            model = LlamaForCausalLM.from_pretrained(args.model_path)
+    elif args.task_type == 'reward_model_inference':
+        if args.model_type == 'pythia':
+            tokenizer = AutoTokenizer.from_pretrained(args.model_name_or_path, trucation_side='left', trust_remote_code=True)
+            model = PythiaRewardModel.from_pretrained(args.model_name_or_path)
+        elif args.model_type == 'llama':
+            tokenizer = AutoTokenizer.from_pretrained(args.model_name_or_path, trucation_side='left')
+            model = LlamaRewardModel.from_pretrained(args.model_name_or_path)
+
     return tokenizer, model
 
 
 def llm_inference(tokenizer: PreTrainedTokenizer, model: PreTrainedModel, 
-                  generation_config: GenerationConfig, dataset: List[Dict[str, str]], args, first_id):
+                  generation_config: GenerationConfig, dataset: List[Dict[str, str]], args):
     new_dataset = []
     for data in dataset:
         answers = []
@@ -107,6 +114,26 @@ def llm_inference(tokenizer: PreTrainedTokenizer, model: PreTrainedModel,
         for data in new_dataset:
             f.write(json.dumps(data) + '\n')
             
+def reward_model_inference(tokenzier: PreTrainedTokenizer, model: PreTrainedModel, 
+                           dataset: List[Dict[str, str]], args):
+    new_dataset = []
+    for data in dataset:
+        prompt = data['prompt']
+        answers = data['answers']
+        texts = [prompt + answer for answer in answers]
+        input_ids = tokenzier(texts, padding=True, truncation=True)['input_ids']
+        with torch.no_grad():
+            rewards: torch.Tensor = model(input_ids=torch.tensor(input_ids).to(model.device))['rm_logits']
+        new_data = {
+            "texts": [prompt+'<sep>'+answer for answer in answers],
+            "scores": rewards.tolist()
+        }
+        new_dataset.append(new_data)
+    with open(args.save_path, 'a+') as f:
+        for new_data in new_dataset:
+            s = json.dumps(new_data)
+            f.write(s+'\n')
+
 def main(args):
     distributed_state = PartialState()
 
@@ -121,17 +148,19 @@ def main(args):
         with distributed_state.split_between_processes(dataset[i:i+args.chunk_size]) as sub_dataset:
             if args.task_type == 'llm_inference':
                 generation_config = GenerationConfig.from_pretrained(args.model_path, do_sample=True, max_new_tokens=args.max_new_tokens)
-                llm_inference(tokenizer, model, generation_config, sub_dataset, args, first_id=i)
+                llm_inference(tokenizer, model, generation_config, sub_dataset, args)
+            elif args.task_tye == 'reward_model_inference':
+                reward_model_inference(tokenizer, model, dataset)
 
 
 
 if __name__ == '__main__':
     parser = ArgumentParser()
     parser.add_argument(
-        '--model_type', type=str, choices=['llama']
+        '--model_type', type=str, choices=['llama', 'pythia']
     )
     parser.add_argument(
-        '--task_type', type=str, choices=['llm_inference']
+        '--task_type', type=str, choices=['llm_inference', 'reward_model_inference']
     )
     parser.add_argument(
         '--model_path', type=str
