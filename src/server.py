@@ -7,16 +7,17 @@ from pydantic import BaseModel
 import argparse
 import uvicorn
 
+
 app = FastAPI()
+
 parser = argparse.ArgumentParser()
 parser.add_argument("--host")
-parser.add_argument("--port")
+parser.add_argument("--port", type=int)
 parser.add_argument("--model_path")
 parser.add_argument("--task_type")
 parser.add_argument("--model_type")
 parser.add_argument("--device")
 args = parser.parse_args()
-
 
 class RefModel:
     def __init__(self, model_path):
@@ -46,24 +47,44 @@ class RewardModel:
         return rewards 
 
 
-# if args.task_type == 'reference':
-#     print("Loading reference model")
-#     ref_model = RefModel(model_path=args.model_path)
-#     print("Loading Successful!")
+if args.task_type == 'reference':
+    print("Loading reference model")
+    ref_model = RefModel(model_path=args.model_path)
+    print("Loading Successful!")
 
-#     class Inputs(BaseModel):
-#         input_ids: List[List[int]]
+    class Inputs(BaseModel):
+        input_ids: List[List[int]]
 
-#     @app.post('/')
-#     async def get_last_hidden_state(input_ids: Inputs = Body(default=...)):
-#         print(input_ids.input_ids)
-#         last_hidden_state: torch.Tensor = ref_model.predict(input_ids.input_ids)
-#         print(last_hidden_state.shape)
-#         return await {
-#             "last_hidden_state": last_hidden_state.tolist()
-#         }
+    @app.post('/')
+    async def get_last_hidden_state(input_ids: Inputs = Body(default=...)):
+        print(input_ids.input_ids)
+        last_hidden_state: torch.Tensor = ref_model.predict(input_ids.input_ids)
+        print(last_hidden_state.shape)
+        return { 
+            "last_hidden_state": last_hidden_state.tolist()
+        }
 
-#elif args.task_type == "reward":
+elif args.task_type == "reward":
+    print("Loading Reward Model")
+    if args.model_type == 'llama':
+        tokenizer = AutoTokenizer.from_pretrained(args.model_path, truncation_side='left', padding_side='right', trust_remote_code=True)
+        reward_model = LlamaRewardModel.from_pretrained(args.model_path, trust_remote_code=True)
+        reward_model = RewardModel(tokenizer, reward_model)
+    elif args.model_type == 'pythia':
+        tokenizer = AutoTokenizer.from_pretrained(args.model_path, truncation_side='left', padding_side='right', trust_remote_code=True)
+        reward_model = PythiaRewardModel.from_pretrained(args.model_path, trust_remote_code=True)
+        reward_model = RewardModel(tokenizer, reward_model)
+    class Responses(BaseModel):
+        response_list: List[str]
+    @app.post('/')
+    async def get_reward(responses: Responses = Body(default=...)):
+        print(responses.response_list)
+        rewards = reward_model.predict(responses.response_list)
+        return {
+            "rewards": rewards
+        }
+
+
 print("Loading Reward Model")
 if args.model_type == 'llama':
     tokenizer = AutoTokenizer.from_pretrained(args.model_path, truncation_side='left', padding_side='right', trust_remote_code=True)
@@ -74,16 +95,7 @@ elif args.model_type == 'pythia':
     reward_model = PythiaRewardModel.from_pretrained(args.model_path, trust_remote_code=True)
     reward_model = RewardModel(tokenizer, reward_model)
 
-class Responses(BaseModel):
-    response_list: List[str]
-
-@app.post('/')
-async def get_reward(responses: Responses = Body(default=...)):
-    print(responses.response_list)
-    rewards = reward_model.predict(responses.response_list)
-    return await {
-        "rewards": rewards
-    }
 
 
-uvicorn.run("server:app", host=args.host, port=args.port)
+if __name__ == '__main__':
+    uvicorn.run("server:app", host=args.host, port=args.port)
