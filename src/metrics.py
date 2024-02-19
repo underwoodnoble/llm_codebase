@@ -32,6 +32,3 @@ def compute_classification_metrics(eval_pred: EvalPrediction):
     return {
         "acc": acc
     }
-
-def compute_contrastive_metrics(predict: EvalPrediction):
-    logits = torch.from_numpy(predict.predictions)
