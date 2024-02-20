@@ -1,5 +1,5 @@
 # Large Language Model Codebase
-This repository is a framework for beginners to dive in llm training, inference and evaluation. The repository is based on huggingface transformers.
+This repository is a framework for beginners to dive into llm training, inference and evaluation. The repository is based on huggingface transformers.
 
 ## Overview
 
@@ -7,7 +7,7 @@ This repository is a framework for beginners to dive in llm training, inference 
 * Supported task：Classification, Reward Model Training, Supervised Finetuning, Rejection Sampling, Weighted Learning, RRHF
 * Supported model: bert, llama
 
-| Model | Supported training method | 
+| Model | Supported training method |
 | --- | --- | 
 | bert | Classification, Reward Model Training |
 | llama | Reward Model Training, Supervised Finetuning, Rejection Sampling, RRHF, Weighted Learning|
