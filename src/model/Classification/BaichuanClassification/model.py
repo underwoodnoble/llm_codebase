@@ -1,12 +1,13 @@
-from ...BaseModel.Baichuan2 import BaichuanConfig, BaichuanModel, BaichuanPreTrainedModel
+from ...BaseModel.Baichuan2 import BaichuanModel, BaichuanPreTrainedModel
+from .configuration import BaichuanClassiferConfig
 import torch
 from torch import nn
 from typing import Optional, List, Dict
 
 
 class BaichuanClassifer(BaichuanPreTrainedModel):
-    config_class = BaichuanConfig
-    def __init__(self, config: BaichuanConfig, baichuan_model_path=None):
+    config_class = BaichuanClassiferConfig
+    def __init__(self, config: BaichuanClassiferConfig, baichuan_model_path=None):
         super().__init__(config)
         if baichuan_model_path is None:
             self.model = BaichuanModel(config)
