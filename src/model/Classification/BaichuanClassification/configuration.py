@@ -4,7 +4,7 @@ from typing import Optional
 
 class BaichuanClassiferConfig(BaichuanConfig):
     def __init__(self, cls_info=None, **kwargs):
-        super().__init__()
+        super().__init__(**kwargs)
         self._update_cls_info(cls_info)
     
     def _update_cls_info(self, cls_info: Optional[dict]=None):
