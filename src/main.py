@@ -1,7 +1,6 @@
 from arguments import CustomArguments
 from transformers import HfArgumentParser
 from utils import print_rank_0, getDataset, loadTokenizerAndModel
-from metrics import compute_classification_metrics
 
 
 def main():
@@ -44,12 +43,22 @@ def main():
 
             print_rank_0("Using sft data collator")
             data_collator = sft_data_collator(tokenizer, args)
+            compute_metrics = None
 
         elif args.task_type == 'offline_rejection_sampling':
             from collator import rjs_data_collator
 
             print_rank_0("Using rejection sampling data collator")
             data_collator = rjs_data_collator(tokenizer, args)
+            compute_metrics = None
+        
+        elif args.task_type == 'classification':
+            from collator import classfication_data_collator
+            from metrics import compute_classification_metrics
+
+            print_rank_0("Using classification data collator")
+            data_collator = classfication_data_collator
+            compute_metrics = compute_classification_metrics
 
         trainer = Trainer(
             model=model,
@@ -57,7 +66,8 @@ def main():
             args=args,
             train_dataset=train_dataset,
             eval_dataset=eval_dataset,
-            data_collator=data_collator
+            data_collator=data_collator,
+            compute_metrics=compute_metrics
         )
 
     elif args.task_type == 'weighted_learning':
@@ -74,22 +84,6 @@ def main():
             train_dataset=train_dataset,
             eval_dataset=eval_dataset,
             data_collator=data_collator
-        )
-
-    elif args.task_type == 'classification':
-        from collator import classfication_data_collator
-        from transformers import Trainer
-
-        print_rank_0("Using classification data collator")
-        data_collator = classfication_data_collator(tokenizer, args)
-        trainer = Trainer(
-            model=model,
-            tokenizer=tokenizer,
-            args=args,
-            train_dataset=train_dataset,
-            eval_dataset=eval_dataset,
-            data_collator=data_collator,
-            compute_metrics=compute_classification_metrics
         )
 
     elif args.task_type == 'offline_RRHF':
