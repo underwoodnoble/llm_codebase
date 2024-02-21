@@ -164,10 +164,12 @@ class RRHFTrainer(Trainer):
 
         batch_size, num_of_example, seq_len = input_ids.shape
 
-        logits = model(input_ids=input_ids.view(batch_size*num_of_example, seq_len), attention_mask=attention_mask.view(batch_size*num_of_example, seq_len))['logits']
+        logits = model(input_ids=input_ids.view(batch_size*num_of_example, seq_len), attention_mask=attention_mask.view(batch_size*num_of_example, seq_len))['logits'] # (batch_size*num_of_example, seq_len, vocab_size)
+        logits = logits[:, :seq_len-1, :]
+        labels = labels[:, :, 1:]
         logtis = F.log_softmax(logits, dim=-1) # (batch_size*num_of_example, seq_length-1, vocab_size)
-        label_logit = self.gather_logits_labels(logtis, labels.view(batch_size*num_of_example, seq_len)) # (batch_size*num_of_example, seq_length-1)
-        scores: torch.Tensor = self.get_score(label_logit, labels.view(batch_size*num_of_example, seq_len)) # (batch_size*num_of_example)
+        label_logit = self.gather_logits_labels(logtis, labels.view(batch_size*num_of_example, seq_len-1)) # (batch_size*num_of_example, seq_length-1)
+        scores: torch.Tensor = self.get_score(label_logit, labels.view(batch_size*num_of_example, seq_len-1)) # (batch_size*num_of_example)
         rrhf_loss = self.rrhf_loss(scores.view(batch_size, num_of_example), rewards)
         sft_loss = self.sft_loss(label_logit, rewards)
         loss = self.args.rrhf_weight * rrhf_loss + sft_loss
