@@ -36,7 +36,7 @@ def main():
             data_collator=reward_data_collator(tokenizer),
             compute_metrics=compute_reward_metrics
             )
-    elif args.task_type in ['sft', 'offline_rejection_sampling']:
+    elif args.task_type in ['sft', 'offline_rejection_sampling', 'classification']:
         from transformers import Trainer
         if args.task_type == 'sft':
             from collator import sft_data_collator
