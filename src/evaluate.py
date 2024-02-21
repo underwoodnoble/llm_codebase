@@ -51,17 +51,14 @@ def ppl_evaluation(args):
     if distributed_state.is_main_process:
         all_ppl = []
         all_loss = []
-    for i in range(0, len(dataset), args.cache_size):
+    for i in tqdm(range(0, len(dataset), args.cache_size)):
         total_ret = []
         with distributed_state.split_between_processes(dataset[i:i+args.cache_size]) as sub_dataset:
-            n = distributed_state.process_index
-            with tqdm(total=len(sub_dataset), desc=f'rank: {n+1}') as pbar:
-                sub_dataset = Dataset.from_list(sub_dataset)
-                data_loader = DataLoader(sub_dataset, batch_size=args.batch_size)
-                for x in data_loader:
-                    ret = compute_ppl(x, model=model, tokenizer=tokenizer)
-                    total_ret.extend(ret)
-                    pbar.update(1)
+            sub_dataset = Dataset.from_list(sub_dataset)
+            data_loader = DataLoader(sub_dataset, batch_size=args.batch_size)
+            for x in data_loader:
+                ret = compute_ppl(x, model=model, tokenizer=tokenizer)
+                total_ret.extend(ret)
 
         total_ret = gather_object(total_ret)
         if distributed_state.is_main_process:
