@@ -10,8 +10,7 @@ from utils import print_rank_0
 
 
 class RewardModelTrainer(Trainer):
-    @classmethod
-    def ranking_loss(logits: torch.Tensor, scores: torch.Tensor):
+    def ranking_loss(self, logits: torch.Tensor, scores: torch.Tensor):
         """Compute ranking loss according to logits and scores
         logits: torch.Tensor  shape: (batch_size, pairs)
         scores: (batch_size, pairs)
@@ -29,8 +28,7 @@ class RewardModelTrainer(Trainer):
         total_pairs = total_mask.sum()
         return total_loss / total_pairs if total_pairs > 0 else total_loss
 
-    @classmethod
-    def lm_loss(lm_logits: torch.Tensor, input_ids: torch.Tensor, scores: torch.Tensor, loss_mask: torch.Tensor, score_thresh=0.9, eps=1e-7):
+    def lm_loss(self, lm_logits: torch.Tensor, input_ids: torch.Tensor, scores: torch.Tensor, loss_mask: torch.Tensor, score_thresh=0.9, eps=1e-7):
         """Compute language model loss
         lm_logits: torch.Tensor shape: (batch_size*num_sample, seq_len, vocab_size)
         input_ids: torch.Tensor shape: (batch_size*num_sample, seq_len)
