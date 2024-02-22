@@ -4,8 +4,8 @@ import numpy as np
 
 
 def compute_reward_metrics(predict: EvalPrediction):
-    logits = torch.from_numpy(predict.predictions)
-    scores = torch.from_numpy(predict.label_ids)
+    logits = torch.from_numpy(predict.predictions) # (batch_size, num_sample)
+    scores = torch.from_numpy(predict.label_ids) # (batch_size, num_sample)
 
     logits_diff = logits.unsqueeze(1) - logits.unsqueeze(2) # shape: (batch_size, num_sample, num_sample)
     
