@@ -66,7 +66,7 @@ def reward_data_collator(tokenizer: PreTrainedTokenizer):
             min_reward = min(example['scores'])
             if len(example['texts']) < num_sample:
                 example['texts'].extend(['']*(num_sample - len(example['texts'])))
-                example['socores'].extend([min_reward - 1]*(num_sample - len(example['texts'])))
+                example['scores'].extend([min_reward - 1]*(num_sample - len(example['texts'])))
             all_texts.extend(example['texts'])
             all_scores.extend(example['scores'])
 
