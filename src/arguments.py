@@ -56,6 +56,8 @@ class CustomArguments(transformers.TrainingArguments):
     add_lm_loss: Optional[bool] = field(default=True, metadata={"help": "add language model loss when training reward model"})
     lm_loss_coeff: Optional[float] = field(default=0., metadata={"help": "the coefficient for language modeling loss."})
     lm_score_thresh: Optional[float] = field(default=0.85, metadata={"help": "the threshold to select response for language modeling."})
+    rm_calibration: Optional[bool] = field(default=True)
+    calibration_bins: List[int] = field(default_factory=lambda:[5])
 
     ## RRHF
     length_penalty: Optional[float] = field(default=1.0, metadata={"help": "length penalty in RRHF"})

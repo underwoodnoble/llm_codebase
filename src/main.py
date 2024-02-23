@@ -34,7 +34,7 @@ def main():
             train_dataset=train_dataset,
             eval_dataset=eval_dataset,
             data_collator=reward_data_collator(tokenizer),
-            compute_metrics=compute_reward_metrics
+            compute_metrics=lambda x: compute_reward_metrics(args, x)
             )
     elif args.task_type in ['sft', 'offline_rejection_sampling', 'classification']:
         from transformers import Trainer
