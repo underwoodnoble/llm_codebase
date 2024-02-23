@@ -172,8 +172,6 @@ def expected_calibration_error(args):
             total_preds.extend(sub_preds)
             total_truth.extend(sub_truth)
     if is_main_process():
-        print(total_preds)
-        print(total_truth)
         expected_error, average_error, max_error = compute_ece(total_truth, total_preds, n_bins=args.num_of_bins, strategy=args.ece_strategy)
         print(f"expected_error: {expected_error}\naverage_error: {average_error}\nmax_error: {max_error}")
 
