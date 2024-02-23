@@ -1,6 +1,6 @@
 from argparse import ArgumentParser
 from typing import List
-from utils import getTestDataset, loadTestTokenizerAndModel
+from utils import getTestDataset, loadTestTokenizerAndModel, is_main_process
 from accelerate import PartialState
 from accelerate.utils import gather_object
 from torch.utils.data import DataLoader
@@ -54,10 +54,10 @@ def ppl_evaluation(args):
     tokenizer, model = loadTestTokenizerAndModel(args)
     model.to(distributed_state.device)
 
-    if distributed_state.is_main_process:
+    if is_main_process():
         all_ppl = []
         all_loss = []
-    for i in tqdm(range(0, len(dataset), args.cache_size)):
+    for i in tqdm(range(0, len(dataset), args.cache_size), disable=not is_main_process()):
         total_ret = []
         with distributed_state.split_between_processes(dataset[i:i+args.cache_size]) as sub_dataset:
             sub_dataset = Dataset.from_list(sub_dataset)
@@ -74,7 +74,7 @@ def ppl_evaluation(args):
                     all_ppl.append(ret["ppl"])
                     all_loss.append(ret["loss"])
     
-    if distributed_state.is_main_process:
+    if is_main_process():
         all_ppl = torch.tensor(all_ppl)
         all_loss = torch.tensor(all_loss)
         num_of_nan = torch.isnan(all_ppl).sum()
@@ -153,9 +153,10 @@ def expected_calibration_error(args):
     tokenizer, model = loadTestTokenizerAndModel(args)
     model.to(distributed_state.device)
 
-    total_preds = []
-    total_truth = []
-    for i in tqdm(range(0, len(dataset), args.cache_size)):
+    if is_main_process():
+        total_preds = []
+        total_truth = []
+    for i in tqdm(range(0, len(dataset), args.cache_size), disable=not is_main_process()):
         sub_preds = []
         sub_truth = []
         with distributed_state.split_between_processes(dataset[i:i+args.cache_size]) as sub_dataset:
@@ -167,10 +168,10 @@ def expected_calibration_error(args):
                 sub_truth.extend(truth)
         sub_preds = gather_object(sub_preds)
         sub_truth = gather_object(sub_truth)
-        if distributed_state.is_main_process:
+        if is_main_process():
             total_preds.extend(sub_preds)
             total_truth.extend(sub_truth)
-    if distributed_state.is_main_process:
+    if is_main_process():
         print(total_preds)
         print(total_truth)
         expected_error, average_error, max_error = compute_ece(total_truth, total_preds, n_bins=args.num_of_bins, strategy=args.ece_strategy)

@@ -10,11 +10,18 @@ from typing import List, Dict, Any, Optional, Tuple
 from datasets import Dataset
 
 
-def print_rank_0(message) -> None:
+def is_main_process():
     if torch.distributed.is_initialized():
         if torch.distributed.get_rank() == 0:
-            print(message, flush=True)
+            return True
+        else:
+            return False
     else:
+        return True
+
+
+def print_rank_0(message) -> None:
+    if is_main_process():
         print(message, flush=True)
 
 
@@ -38,7 +45,7 @@ def load_data_from_paths(data_paths: List[str]) -> List[Dict[str, Any]]:
     i = 0
     for data_path in data_paths:
         data_list = read_json_or_jsonl_data(data_path)
-        for data in tqdm(data_list):
+        for data in tqdm(data_list, disable=not is_main_process()):
             data['id'] = i
             i += 1
             total_data_list.append(data)
