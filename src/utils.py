@@ -5,9 +5,9 @@ from transformers import (LlamaTokenizer, LlamaPreTrainedModel, BertForSequenceC
 BertTokenizer, AutoConfig, LlamaForCausalLM, AutoModelForSequenceClassification, AutoTokenizer, PreTrainedTokenizer, PreTrainedModel)
 from model.RewardModel import LlamaRewardModel
 from arguments import CustomArguments
-from datasets import Dataset
 import os
 from typing import List, Dict, Any, Optional, Tuple
+from datasets import Dataset
 
 
 def print_rank_0(message) -> None:
@@ -188,7 +188,7 @@ def getDataset(args: CustomArguments, type='train') -> Dataset:
         data_list = new_data_list
     
     if args.debug_mode:
-        data_list = data_list[:1000]
+        data_list = data_list[:100]
     return Dataset.from_list(data_list)
 
 
@@ -284,6 +284,16 @@ def getTestDataset(args) -> List[Dict[str, Any]]:
                 }
                 new_data_list.append(new_data)
             data_list = new_data_list
+    elif args.task_type == 'ece':
+        if args.preference_data_text_name != 'texts' or args.preference_data_score_name != 'scores':
+            new_data_list = []
+            for data in data_list:
+                new_data = {
+                    "texts": data[args.preference_data_text_name],
+                    "scores": data[args.preference_data_score_name]
+                }
+                new_data_list.append(new_data)
+            data_list = new_data_list
             
     if args.debug_mode:
         data_list = data_list[:100]
@@ -291,9 +301,15 @@ def getTestDataset(args) -> List[Dict[str, Any]]:
 
 
 def loadTestTokenizerAndModel(args) -> Tuple[PreTrainedTokenizer, PreTrainedModel]:
-    if args.model_type == 'llama':
-        tokenizer = LlamaTokenizer.from_pretrained(args.model_name_or_path, truncation_side='left', padding_side='right')
-        tokenizer.model_max_length = args.model_max_length
-        model = LlamaForCausalLM.from_pretrained(args.model_name_or_path)
-        set_llama_special_token(tokenizer, model)
+    if args.task_type == 'ppl':
+        if args.model_type == 'llama':
+            tokenizer = LlamaTokenizer.from_pretrained(args.model_name_or_path, truncation_side='left', padding_side='right')
+            tokenizer.model_max_length = args.model_max_length
+            model = LlamaForCausalLM.from_pretrained(args.model_name_or_path)
+    if args.task_type == 'ece':
+        if args.model_type == 'llama':
+            tokenizer = LlamaTokenizer.from_pretrained(args.model_name_or_path, truncation_side='left', padding_side='right')
+            tokenizer.model_max_length = args.model_max_length
+            model = LlamaRewardModel.from_pretrained(args.model_name_or_path)
+
     return tokenizer, model

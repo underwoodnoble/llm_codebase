@@ -4,21 +4,15 @@ import torch
 from torch.nn.functional import sigmoid
 import numpy as np
 
-def compute_preference_confidence(batch_data: Dict[str, List[Union[str, float]]], tokenizer: PreTrainedTokenizer, model: PreTrainedModel):
-    batch_size = len(batch_data)
-    all_texts = []
-    all_scores = []
-    for texts, scores in zip(batch_data['texts'], batch_data['scores']):
-        all_texts.extend(texts)
-        all_scores.extend(scores)
-    
-    encoding = tokenizer(all_texts, truncation=True, padding=True)
-    input_ids = torch.tensor(encoding['input_ids']) # (batch_size*num_of_sample, seq_len)
-    attention_mask = torch.tensor(encoding['attention_mask']) # (batch_size*num_of_sample, seq_len)
+def compute_preference_confidence(inputs: Dict[str, torch.Tensor], tokenizer: PreTrainedTokenizer, model: PreTrainedModel):
+    input_ids = inputs['input_ids'].to(model.device) # (batch_size, num_of_sample, seq_len)
+    attention_mask = inputs['attention_mask'].to(model.device) # (batch_size, num_of_sample, seq_len)
+    scores = inputs['scores'].to(model.device)
+    batch_size, num_of_sample, seq_len = input_ids.shape
     with torch.no_grad():
-        logits: torch.Tensor = model.forward(input_ids=input_ids.to(model.device), attention_mask=attention_mask.to(model.device))['rm_logits'] #(batch_size*num_of_sample, 1)
+        logits: torch.Tensor = model.forward(input_ids=input_ids.view(batch_size*num_of_sample, -1),
+                                             attention_mask=attention_mask.view(batch_size*num_of_sample, -1))['rm_logits'] #(batch_size*num_of_sample, 1)
     logits = logits.view(batch_size, -1) # (batch_size, num_of_sample)
-    scores = torch.tensor(all_scores).view(batch_size, -1).to(model.device) # (batch_size, num_of_sample)
     
     logit_diff = logits.unsqueeze(dim=1) - logits.unsqueeze(dim=-1) # (batch_size, num_of_sample, num_of_sample)
     probs = sigmoid(logit_diff).flatten().tolist()
@@ -26,8 +20,6 @@ def compute_preference_confidence(batch_data: Dict[str, List[Union[str, float]]]
     scores_diff = (scores.unsqueeze(dim=1) - scores.unsqueeze(dim=-1)).flatten().tolist()
     preds = []
     ground_truth = []
-    print(scores_diff)
-    print(probs)
     for i in range(len(scores_diff)):
         score = scores_diff[i]
         if score == 0.0:

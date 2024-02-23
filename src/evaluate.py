@@ -5,13 +5,13 @@ from accelerate import PartialState
 from accelerate.utils import gather_object
 from torch.utils.data import DataLoader
 from datasets import Dataset
-from test import compute_ppl, gpt_winer
+from test import compute_ppl, gpt_winer, compute_preference_confidence, compute_ece
 import json
 from tqdm import tqdm
 import torch
-from multiprocessing import Pool
 from concurrent.futures import ThreadPoolExecutor
 import time
+from collator import reward_data_collator
 
 def get_args():
     parser = ArgumentParser()
@@ -20,14 +20,15 @@ def get_args():
     parser.add_argument('--data_dir', type=str, default=None)
     parser.add_argument('--save_path', type=str)
     parser.add_argument('--model_type', type=str, choices=['llama'])
-    parser.add_argument('--task_type', type=str, choices=['ppl', 'win_rate', 'mt_win_rate'])
-    parser.add_argument('--batch_size', type=int)
+    parser.add_argument('--task_type', type=str, choices=['ppl', 'win_rate', 'ece'])
+    parser.add_argument('--batch_size', type=int, default=1)
     parser.add_argument('--cache_size', type=int, default=8)
     parser.add_argument('--model_max_length', type=int, default=512)
-    parser.add_argument('--ppl_outlier_gate', type=float, default=10000)
 
+    parser.add_argument('--ppl_outlier_gate', type=float, default=10000)
     parser.add_argument('--data_prompt_name', type=str, default='prompt')
     parser.add_argument('--data_answer_name', type=str, default='answer')
+
     parser.add_argument('--pair_data_prompt_name', type=str, default='prompt')
     parser.add_argument('--pair_data_answers_name', type=str, default='answers')
     parser.add_argument('--model_A_name', type=str, default='model_A')
@@ -36,6 +37,11 @@ def get_args():
     parser.add_argument('--openai_api_key', type=str)
     parser.add_argument('--openai_api_base', type=str)
     parser.add_argument('--prompt_type', type=str, default='union', choices=['union', 'helpful', 'harmless'])
+
+    parser.add_argument('--preference_data_text_name', type=str, default='texts')
+    parser.add_argument('--preference_data_score_name', type=str, default='scores')
+    parser.add_argument('--num_of_bins', type=int, default=5)
+    parser.add_argument('--ece_strategy', type=str, default='uniform', choices=['uniform', 'quantile'])
 
     parser.add_argument('--debug_mode', type=bool, default=False)
     args = parser.parse_args()
@@ -141,11 +147,43 @@ def win_rate(args):
     print(f"normalized tie rate: {(equally_bads + equally_goods + ties)/(first_wins + second_wins + equally_bads + equally_goods + ties)}")
 
     
+def expected_calibration_error(args):
+    distributed_state = PartialState()
+    dataset = getTestDataset(args)
+    tokenizer, model = loadTestTokenizerAndModel(args)
+    model.to(distributed_state.device)
+
+    total_preds = []
+    total_truth = []
+    for i in tqdm(range(0, len(dataset), args.cache_size)):
+        sub_preds = []
+        sub_truth = []
+        with distributed_state.split_between_processes(dataset[i:i+args.cache_size]) as sub_dataset:
+            sub_dataset = Dataset.from_list(sub_dataset)
+            data_loader = DataLoader(sub_dataset, batch_size=args.batch_size, collate_fn=reward_data_collator(tokenizer))
+            for batch in data_loader:
+                preds, truth = compute_preference_confidence(batch, tokenizer, model)
+                sub_preds.extend(preds)
+                sub_truth.extend(truth)
+        sub_preds = gather_object(sub_preds)
+        sub_truth = gather_object(sub_truth)
+        if distributed_state.is_main_process:
+            total_preds.extend(sub_preds)
+            total_truth.extend(sub_truth)
+    if distributed_state.is_main_process:
+        print(total_preds)
+        print(total_truth)
+        expected_error, average_error, max_error = compute_ece(total_truth, total_preds, n_bins=args.num_of_bins, strategy=args.ece_strategy)
+        print(f"expected_error: {expected_error}\naverage_error: {average_error}\nmax_error: {max_error}")
+
+
 def main(args):
     if args.task_type == 'ppl':
         ppl_evaluation(args)
     elif args.task_type == 'win_rate':
         win_rate(args)
+    elif args.task_type == 'ece':
+        expected_calibration_error(args)
 
 
 
