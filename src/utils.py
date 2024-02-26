@@ -133,6 +133,8 @@ def data_transform(data_list: List[Dict[str, List]], args: CustomArguments) -> L
                     "scores": data[args.preference_data_score_name]
                 }
                 new_data_list.append(new_data)
+        else:
+            new_data_list = data_list
         if args.task_type == 'DPO':
             new_data_list = dpo_transform(new_data_list, args)
 
@@ -144,6 +146,8 @@ def data_transform(data_list: List[Dict[str, List]], args: CustomArguments) -> L
                     "answer": data[args.sft_data_answer_name]
                 }
                 new_data_list.append(new_data)
+        else:
+            new_data_list = data_list
     elif args.task_type == 'weighted_learning':
         if args.weighted_data_prompt_name != 'prompt' or args.weighted_data_answer_name != 'answer' or args.weighted_data_score_name != 'score':
             for data in data_list:
@@ -153,19 +157,24 @@ def data_transform(data_list: List[Dict[str, List]], args: CustomArguments) -> L
                     "score": data[args.weighted_data_score_name]
                 }
                 new_data_list.append(new_data)
+        else:
+            new_data_list = data_list
 
     elif args.task_type == 'classification':
         labels = []
         args.id2label = {}
         args.label2id = {}
-        for data in data_list:
-            new_data = {
-                "text": data[args.cls_data_text_name],
-                "label": data[args.cls_data_label_name]
-            }
-            new_data_list.append(new_data)
-            labels.append(new_data['label'])
-        
+        if args.cls_data_data_text_name != 'text' or args.cls_data_label_name != 'label':
+            for data in data_list:
+                new_data = {
+                    "text": data[args.cls_data_text_name],
+                    "label": data[args.cls_data_label_name]
+                }
+                new_data_list.append(new_data)
+                labels.append(new_data['label'])
+        else:
+            new_data_list = data_list
+
         labels = list(set(labels))
         for i, label in enumerate(labels):
             args.id2label[i] = label
