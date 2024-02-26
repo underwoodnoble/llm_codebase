@@ -16,6 +16,8 @@ class CustomArguments(transformers.TrainingArguments):
 
     eval_data_dir: str = field(default=None, metadata={"help": "the directory to load evaluation datasets."})
     eval_data_paths: List[str] = field(default=None, metadata={"help": "evaluation dataset paths."})
+    eval_dataset_merge_mode: Optional[str] = field(default='separate',
+                                                 metadata={"help": "How to evaluate multiple evalution datasets. Must be one of ['separate', 'merge', 'both']"})
 
     sep_token: Optional[str] = field(default='<sep>', metadata={"help": "the token that can use to seperate the query and answer in text"})
 
@@ -80,6 +82,8 @@ class CustomArguments(transformers.TrainingArguments):
             raise ValueError(f"Only one of data_dir and data_paths should be set.")
         if self.eval_data_dir is not None and self.eval_data_paths is not None:
             raise ValueError(f"Only one of eval_dir and eval_data_paths should be set.")
+        if self.eval_dataset_merge_mode not in ['separate', 'merge', 'both']:
+            raise ValueError(f"Ivalid eval_dataset_merge_mode, Expected one of ['separate', 'merge', 'both'], bug got {self.eval_dataset_merge_mode}")
 
         valid_model_types = ['bert', 'llama', 'baichuan']
         if self.model_type not in valid_model_types:

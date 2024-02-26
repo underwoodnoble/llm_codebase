@@ -122,58 +122,39 @@ def dpo_transform(data_list: List[Dict[str, List]], args: CustomArguments) -> Li
 
     return new_data_list
 
-def getDataset(args: CustomArguments, type='train') -> Dataset:
-    if type == 'train':
-        if args.data_paths is None and args.data_dir is None:
-            return None
-        if args.data_paths is not None:
-            data_paths = args.data_paths
-        else:
-            data_paths = [os.path.join(args.data_dir, path) for path in os.listdir(args.data_dir)]
-    else:
-        if args.eval_data_paths is None and args.eval_data_dir is None:
-            return None
-        if args.eval_data_paths is not None:
-            data_paths = args.eval_data_paths
-        else:
-            data_paths = [os.path.join(args.eval_data_dir, path) for path in os.listdir(args.eval_data_dir)]       
-    data_list = load_data_from_paths(data_paths)
-
+def data_transform(data_list: List[Dict[str, List]], args: CustomArguments) -> List[Dict[str, Any]]:
+    new_data_list = []
     if args.task_type in ['reward', "offline_rejection_sampling", "offline_RRHF", "DPO"]:
         # transform to the format: {"texts": ["text1", "text2"], "scores": [s1, s2]}
         if args.preference_data_text_name != 'texts' or args.preference_data_score_name != 'scores':
-            new_data_list = []
             for data in data_list:
                 new_data = {
                     "texts": data[args.preference_data_text_name],
                     "scores": data[args.preference_data_score_name]
                 }
                 new_data_list.append(new_data)
-            data_list = new_data_list
         if args.task_type == 'DPO':
-            data_list = dpo_transform(data_list, args)
+            new_data_list = dpo_transform(new_data_list, args)
 
     elif args.task_type == 'sft':
         if args.sft_data_prompt_name != 'prompt' or args.sft_data_answer_name != 'answer':
-            new_data_list = []
             for data in data_list:
                 new_data = {
                     "prompt": data[args.sft_data_prompt_name],
                     "answer": data[args.sft_data_answer_name]
                 }
                 new_data_list.append(new_data)
-            data_list = new_data_list
     elif args.task_type == 'weighted_learning':
         if args.weighted_data_prompt_name != 'prompt' or args.weighted_data_answer_name != 'answer' or args.weighted_data_score_name != 'score':
-            new_data_list = []
             for data in data_list:
                 new_data = {
                     "prompt": data[args.weighted_data_prompt_name],
                     "answer": data[args.weighted_data_answer_name],
                     "score": data[args.weighted_data_score_name]
                 }
+                new_data_list.append(new_data)
+
     elif args.task_type == 'classification':
-        new_data_list = []
         labels = []
         args.id2label = {}
         args.label2id = {}
@@ -192,11 +173,46 @@ def getDataset(args: CustomArguments, type='train') -> Dataset:
 
         if args.cls_data_label_nums is None:
             args.cls_data_label_nums = len(labels)
-        data_list = new_data_list
-    
+
     if args.debug_mode:
-        data_list = data_list[:100]
-    return Dataset.from_list(data_list)
+        new_data_list = data_list[:100]
+
+    return new_data_list
+
+def getDataset(args: CustomArguments, type='train') -> Dataset:
+    if type == 'train':
+        if args.data_paths is None and args.data_dir is None:
+            return None
+        if args.data_paths is not None:
+            data_paths = args.data_paths
+        else:
+            data_paths = [os.path.join(args.data_dir, path) for path in os.listdir(args.data_dir)]
+        data_list = data_transform(load_data_from_paths(data_paths), args)
+        return Dataset.from_list(data_list)
+    else:
+        eval_dataset = {}
+        if args.eval_data_paths is None and args.eval_data_dir is None:
+            return None
+        if args.eval_data_paths is not None:
+            data_paths = args.eval_data_paths
+        else:
+            data_paths = [os.path.join(args.eval_data_dir, path) for path in os.listdir(args.eval_data_dir)]       
+        if args.eval_dataset_merge_mode in ['separate', 'both']:
+            if args.eval_dataset_merge_mode == 'both':
+                eval_dataset['all'] = []
+            for path in data_paths:
+                sub_data_list = data_transform(load_data_from_paths([path]), args)
+                if args.eval_dataset_merge_mode == 'both':
+                    eval_dataset['all'].extend(sub_data_list)
+                _, name = os.path.split(path)
+                eval_dataset[name] = Dataset.from_list(sub_data_list)
+            if args.eval_dataset_merge_mode == 'both':
+                eval_dataset['all'] = Dataset.from_list(eval_dataset['all'])
+
+        elif args.eval_dataset_merge_mode == 'merge':
+            eval_dataset = data_transform(load_data_from_paths(data_paths), args)
+            eval_dataset = Dataset.from_list(eval_dataset)
+        return eval_dataset
 
 
 def loadTokenizerAndModel(args: CustomArguments) -> Tuple[PreTrainedTokenizer, PreTrainedModel, Optional[PreTrainedModel]]:
