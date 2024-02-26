@@ -175,7 +175,7 @@ def data_transform(data_list: List[Dict[str, List]], args: CustomArguments) -> L
             args.cls_data_label_nums = len(labels)
 
     if args.debug_mode:
-        new_data_list = data_list[:100]
+        new_data_list = new_data_list[:100]
 
     return new_data_list
 
