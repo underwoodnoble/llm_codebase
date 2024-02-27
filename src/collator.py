@@ -63,17 +63,13 @@ def reward_data_collator(tokenizer: PreTrainedTokenizer):
         all_texts = []
         all_scores = []
         for example in examples:
-            min_reward = min(example['scores'])
             if len(example['texts']) < num_sample:
-                example['texts'].extend(['']*(num_sample - len(example['texts'])))
-                example['scores'].extend([min_reward - 1]*(num_sample - len(example['scores'])))
+                example['texts'].extend([' ']*(num_sample - len(example['texts'])))
+                example['scores'].extend([-100]*(num_sample - len(example['scores'])))
             all_texts.extend(example['texts'])
             all_scores.extend(example['scores'])
 
-        for i in range(len(all_texts)):
-            all_texts[i] += tokenizer.eos_token
         encodings = tokenizer(all_texts, padding=True, truncation=True, add_special_tokens=True)
-
         return {
             "input_ids": torch.tensor(encodings['input_ids']).reshape(batch_size, num_sample, -1),
             "attention_mask": torch.tensor(encodings['attention_mask']).reshape(batch_size, num_sample, -1),

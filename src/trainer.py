@@ -23,8 +23,8 @@ class RewardModelTrainer(Trainer):
 
         total_mask = (score_mask_larger + score_mask_smaller) * pad_mask
 
-        log_porb = nn.functional.logsigmoid(logits_diff * score_mask * pad_mask)
-        total_loss = - (log_porb * total_mask).sum()
+        log_prob = nn.functional.logsigmoid(logits_diff * score_mask * pad_mask)
+        total_loss = - (log_prob * total_mask).sum()
         total_pairs = total_mask.sum()
         return total_loss / total_pairs if total_pairs > 0 else total_loss
 
@@ -172,3 +172,7 @@ class RRHFTrainer(Trainer):
         sft_loss = self.sft_loss(label_logit, rewards)
         loss = self.args.rrhf_weight * rrhf_loss + sft_loss
         return (loss, scores) if return_outputs else loss
+
+        
+class KTOTrainer(Trainer):
+    pass
