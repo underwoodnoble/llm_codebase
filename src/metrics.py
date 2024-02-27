@@ -57,8 +57,8 @@ def compute_reward_metrics(args, predict: EvalPrediction):
             )
 
             calibration_errors[f"calibration_ECE_bin{num_bins}"] = expected_error
-            calibration_errors[f"calibration_ACE_bin{num_bins}"] = average_error
-            calibration_errors[f"calibration_MCE_bin{num_bins}"] = max_error
+            #calibration_errors[f"calibration_ACE_bin{num_bins}"] = average_error
+            #calibration_errors[f"calibration_MCE_bin{num_bins}"] = max_error
     
     if args.debug_mode:
         print_rank_0(f">>> Check eval_prediction outputs...")
