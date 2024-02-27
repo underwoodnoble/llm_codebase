@@ -45,7 +45,7 @@ class CustomArguments(transformers.TrainingArguments):
     model_name_or_path: Optional[str] = field(default=None, metadata={"help": "pretrained model path"})
     model_max_length: Optional[int] = field(default=512, metadata={"help": "the max sentence sequence length."})
     ignore_token_id: Optional[int] = field(default=-100, metadata={"help": "token id used to inplace query ids."})
-    set_llama_special_token: Optional[bool] = field(default=True, metadata={"help": "whether or not add special token in tokenizer."})
+    set_llama_special_tokens: Optional[bool] = field(default=True, metadata={"help": "whether or not add special token in tokenizer."})
     
     #########################################################################################
     # training arguments
