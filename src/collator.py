@@ -12,11 +12,14 @@ def _llm_tokenize(prompts: List[str], texts: List[str], tokenizer: PreTrainedTok
     labels = []
     for prompt, text in zip(prompts, texts):
         prompt_ids = tokenizer.encode(prompt, add_special_tokens=False)
-        text_ids = tokenizer.encode(text, add_special_tokens=True)
+        text_ids = tokenizer.encode(text, add_special_tokens=False)
         label = deepcopy(text_ids)
         if not args.only_predict_answer:
-            label[:len(prompt_ids)+1] = [args.ignore_token_id] * (len(prompt_ids) + 1)
+            label[:len(prompt_ids)] = [args.ignore_token_id] * (len(prompt_ids))
+        text_ids = [tokenizer.bos_token_id] + text_ids + [tokenizer.eos_token_id]
+        label = [tokenizer.bos_token_id] + label + [tokenizer.eos_token_id]
         input_ids.append(torch.tensor(text_ids[-args.model_max_length:]))
+
         labels.append(torch.tensor(label[-args.model_max_length:]))
     
     input_ids = pad_sequence(input_ids, batch_first=True, padding_value=tokenizer.pad_token_id)
@@ -38,9 +41,9 @@ def classfication_data_collator(tokenizer: PreTrainedTokenizer, args: CustomArgu
         texts = []
         labels = []
         for example in examples:
-            texts.append(example['text'])
+            texts.append(tokenizer.bos_token + example['text'] + tokenizer.eos_token)
             labels.append(args.label2id[example['label']])
-        encodings = tokenizer(texts, padding=True, truncation=True, add_special_tokens=True)
+        encodings = tokenizer(texts, padding=True, truncation=True, add_special_tokens=False)
 
         return {
             "input_ids": torch.tensor(encodings['input_ids']),
@@ -64,12 +67,12 @@ def reward_data_collator(tokenizer: PreTrainedTokenizer):
         all_scores = []
         for example in examples:
             if len(example['texts']) < num_sample:
-                example['texts'].extend([' ']*(num_sample - len(example['texts'])))
+                example['texts'].extend(['']*(num_sample - len(example['texts'])))
                 example['scores'].extend([-100]*(num_sample - len(example['scores'])))
-            all_texts.extend(example['texts'])
+            all_texts.extend([tokenizer.bos_token + text + tokenizer.eos_token for text in example['texts']])
             all_scores.extend(example['scores'])
 
-        encodings = tokenizer(all_texts, padding=True, truncation=True, add_special_tokens=True)
+        encodings = tokenizer(all_texts, padding=True, truncation=True, add_special_tokens=False)
         return {
             "input_ids": torch.tensor(encodings['input_ids']).reshape(batch_size, num_sample, -1),
             "attention_mask": torch.tensor(encodings['attention_mask']).reshape(batch_size, num_sample, -1),
