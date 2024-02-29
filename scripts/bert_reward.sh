@@ -1,15 +1,17 @@
-REPO_DIR=REPO_DIR
+REPO_DIR=repo_dir
 DATA_DIR=${REPO_DIR}/data/preference_data/helpful
+MODEL_PATH=model_path
+OUTPUT_DIR=output_dir
 export CUDA_VISIBLE_DEVICES=0
-python3 ${REPO_DIR}/src/main.py \
+python3 ${REPO_DIR}/main.py \
     --task_type reward \
     --do_train True \
     --data_paths ${DATA_DIR}/helpful.train.json \
-    --eval_data_paths ${DATA_DIR}helpful.test.json \
-    --preference_data_texts_name text \
-    --preference_data_scores_name score \
-    --model_name_or_path model_name_or_path \
-    --output_dir output_dir \
+    --eval_data_paths ${DATA_DIR}/helpful.test.json \
+    --preference_data_text_name text \
+    --preference_data_score_name score \
+    --model_name_or_path ${MODEL_PATH} \
+    --output_dir ${OUTPUT_DIR} \
     --remove_unused_columns False \
     --report_to none \
     --per_device_train_batch_size 16 \
