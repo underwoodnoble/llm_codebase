@@ -57,7 +57,7 @@ def main():
             from src.metrics import compute_classification_metrics
 
             print_rank_0("Using classification data collator")
-            data_collator = classfication_data_collator
+            data_collator = classfication_data_collator(tokenizer, args)
             compute_metrics = compute_classification_metrics
 
         trainer = Trainer(
