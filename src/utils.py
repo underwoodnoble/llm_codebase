@@ -2,9 +2,9 @@ import torch
 import json
 from tqdm import tqdm
 from transformers import (LlamaTokenizer, LlamaPreTrainedModel, BertForSequenceClassification, BertConfig, 
-BertTokenizer, AutoConfig, LlamaForCausalLM, AutoModelForSequenceClassification, AutoTokenizer, PreTrainedTokenizer, PreTrainedModel)
-from model.RewardModel import LlamaRewardModel
-from arguments import CustomArguments
+BertTokenizer, AutoConfig, LlamaForCausalLM, AutoModelForSequenceClassification, AutoTokenizer, PreTrainedTokenizer, PreTrainedModel, BertForMaskedLM)
+from .model.RewardModel import LlamaRewardModel
+from .arguments import TrainingArguments
 import os
 from typing import List, Dict, Any, Optional, Tuple
 from datasets import Dataset
@@ -83,7 +83,7 @@ def set_llama_special_tokens(tokenizer: LlamaTokenizer, model: LlamaPreTrainedMo
         output_embeddings[-num_new_tokens:] = output_embeddings_avg
 
 
-def dpo_transform(data_list: List[Dict[str, List]], args: CustomArguments) -> List[Dict[str, Any]]:
+def dpo_transform(data_list: List[Dict[str, List]], args: TrainingArguments) -> List[Dict[str, Any]]:
     new_data_list = []
     for data in data_list:
         if args.construct_method == 'best_over_rest':
@@ -122,7 +122,7 @@ def dpo_transform(data_list: List[Dict[str, List]], args: CustomArguments) -> Li
 
     return new_data_list
 
-def data_transform(data_list: List[Dict[str, List]], args: CustomArguments) -> List[Dict[str, Any]]:
+def data_transform(data_list: List[Dict[str, List]], args: TrainingArguments) -> List[Dict[str, Any]]:
     new_data_list = []
     if args.task_type in ['reward', "offline_rejection_sampling", "offline_RRHF", "DPO"]:
         # transform to the format: {"texts": ["text1", "text2"], "scores": [s1, s2]}
@@ -138,7 +138,7 @@ def data_transform(data_list: List[Dict[str, List]], args: CustomArguments) -> L
         if args.task_type == 'DPO':
             new_data_list = dpo_transform(new_data_list, args)
 
-    elif args.task_type == 'sft':
+    elif args.task_type == 'SFT':
         if args.sft_data_prompt_name != 'prompt' or args.sft_data_answer_name != 'answer':
             for data in data_list:
                 new_data = {
@@ -182,13 +182,25 @@ def data_transform(data_list: List[Dict[str, List]], args: CustomArguments) -> L
 
         if args.cls_data_label_nums is None:
             args.cls_data_label_nums = len(labels)
+    
+    elif args.task_type == 'KTO':
+        if args.kto_pair_prompt_name != 'prompt' or args.kto_pair_answer_name != 'answer' or args.kto_pair_label_name != 'label':
+            for data in data_list:
+                new_data = {
+                    "prompt": data[args.kto_pair_prompt_name],
+                    "answer": data[args.kto_pair_answer_name],
+                    "label": data[args.kto_pair_label_name]
+                }
+                new_data_list.append(new_data)
+        else:
+            new_data_list = data_list
 
     if args.debug_mode:
         new_data_list = new_data_list[:100]
 
     return new_data_list
 
-def getDataset(args: CustomArguments, type='train') -> Dataset:
+def getDataset(args: TrainingArguments, type='train') -> Dataset:
     if type == 'train':
         if args.data_paths is None and args.data_dir is None:
             return None
@@ -224,7 +236,7 @@ def getDataset(args: CustomArguments, type='train') -> Dataset:
         return eval_dataset
 
 
-def loadTokenizerAndModel(args: CustomArguments) -> Tuple[PreTrainedTokenizer, PreTrainedModel, Optional[PreTrainedModel]]:
+def loadTokenizerAndModel(args: TrainingArguments) -> Tuple[PreTrainedTokenizer, PreTrainedModel, Optional[PreTrainedModel]]:
     if args.task_type == 'reward':
         if args.model_type == 'bert':
             config = BertConfig.from_pretrained(args.model_name_or_path)
@@ -245,7 +257,7 @@ def loadTokenizerAndModel(args: CustomArguments) -> Tuple[PreTrainedTokenizer, P
                     
         else:
             raise ValueError(f"Training reward model do not support the model type {args.model_type}.")
-    elif args.task_type in ['sft', 'offline_rejection_sampling', "offline_RRHF", 'weighted_learning']:
+    elif args.task_type in ['SFT', 'offline_rejection_sampling', "offline_RRHF", 'weighted_learning']:
         if args.model_type == 'llama':
             tokenizer = LlamaTokenizer.from_pretrained(args.model_name_or_path, truncation_side=args.truncation_side, padding_side=args.padding_side)
             tokenizer.model_max_length = args.model_max_length
@@ -272,7 +284,7 @@ def loadTokenizerAndModel(args: CustomArguments) -> Tuple[PreTrainedTokenizer, P
                 tokenizer.pad_token_id = 0
                 model.config.pad_token_id = 0
 
-    elif args.task_type == 'DPO':
+    elif args.task_type in ['DPO', 'KTO']:
         if args.model_type == 'llama':
             tokenizer = LlamaTokenizer.from_pretrained(args.model_name_or_path, truncation_side=args.truncation_side, padding_side=args.padding_side)
             tokenizer.model_max_length = args.model_max_length

@@ -1,13 +1,13 @@
 import torch
-from arguments import CustomArguments
+from .arguments import TrainingArguments
 from transformers import PreTrainedTokenizer
 from typing import List, Dict
 from copy import deepcopy
 from torch.nn.utils.rnn import pad_sequence
-from utils import print_rank_0
+from .utils import print_rank_0
 
 
-def _llm_tokenize(prompts: List[str], texts: List[str], tokenizer: PreTrainedTokenizer, args: CustomArguments) -> Dict[str, torch.Tensor]:
+def _llm_tokenize(prompts: List[str], texts: List[str], tokenizer: PreTrainedTokenizer, args: TrainingArguments) -> Dict[str, torch.Tensor]:
     input_ids = []
     labels = []
     for prompt, text in zip(prompts, texts):
@@ -36,7 +36,7 @@ def _llm_tokenize(prompts: List[str], texts: List[str], tokenizer: PreTrainedTok
     }
     
 
-def classfication_data_collator(tokenizer: PreTrainedTokenizer, args: CustomArguments):
+def classfication_data_collator(tokenizer: PreTrainedTokenizer, args: TrainingArguments):
     def collator(examples):
         texts = []
         labels = []
@@ -54,12 +54,12 @@ def classfication_data_collator(tokenizer: PreTrainedTokenizer, args: CustomArgu
     return collator
         
 
-def multi_object_classification_data_collator(tokenizer: PreTrainedTokenizer, args: CustomArguments):
+def multi_object_classification_data_collator(tokenizer: PreTrainedTokenizer, args: TrainingArguments):
     def collator(examples):
         pass
 
 
-def reward_data_collator(tokenizer: PreTrainedTokenizer):
+def reward_data_collator(tokenizer: PreTrainedTokenizer, args: TrainingArguments):
     def collator(examples: List[Dict[str, List]]):
         batch_size = len(examples)
         num_sample = max([len(example['texts']) for example in examples])
@@ -67,12 +67,18 @@ def reward_data_collator(tokenizer: PreTrainedTokenizer):
         all_scores = []
         for example in examples:
             if len(example['texts']) < num_sample:
-                example['texts'].extend(['']*(num_sample - len(example['texts'])))
+                example['texts'].extend([' ']*(num_sample - len(example['texts'])))
                 example['scores'].extend([-100]*(num_sample - len(example['scores'])))
-            all_texts.extend([tokenizer.bos_token + text + tokenizer.eos_token for text in example['texts']])
+            if args.model_type == 'llama':
+                all_texts.extend([tokenizer.bos_token + text + tokenizer.eos_token for text in example['texts']])
+            else:
+                all_texts.extend(example['texts'])
             all_scores.extend(example['scores'])
 
-        encodings = tokenizer(all_texts, padding=True, truncation=True, add_special_tokens=False)
+        if args.model_type == 'llama':
+            encodings = tokenizer(all_texts, padding=True, truncation=True, add_special_tokens=False)
+        else:
+            encodings = tokenizer(all_texts, padding=True, truncation=True, add_special_tokens=True)
         return {
             "input_ids": torch.tensor(encodings['input_ids']).reshape(batch_size, num_sample, -1),
             "attention_mask": torch.tensor(encodings['attention_mask']).reshape(batch_size, num_sample, -1),
@@ -82,7 +88,7 @@ def reward_data_collator(tokenizer: PreTrainedTokenizer):
     return collator
 
     
-def sft_data_collator(tokenizer: PreTrainedTokenizer, args: CustomArguments):
+def sft_data_collator(tokenizer: PreTrainedTokenizer, args: TrainingArguments):
     def collator(examples):
         texts = []
         prompts = []
@@ -96,7 +102,7 @@ def sft_data_collator(tokenizer: PreTrainedTokenizer, args: CustomArguments):
     return collator
 
 
-def rjs_data_collator(tokenizer: PreTrainedTokenizer, args: CustomArguments):
+def rjs_data_collator(tokenizer: PreTrainedTokenizer, args: TrainingArguments):
     def collator(examples):
         best_texts: List[str] = []
         for example in examples:
@@ -121,7 +127,7 @@ def rjs_data_collator(tokenizer: PreTrainedTokenizer, args: CustomArguments):
     return collator
         
 
-def rrhf_data_collator(tokenizer: PreTrainedTokenizer, args: CustomArguments):
+def rrhf_data_collator(tokenizer: PreTrainedTokenizer, args: TrainingArguments):
     def collator(examples: List[Dict[str, List]]):
         all_texts: List[str] = []
         all_scores: List[float] = []
@@ -157,7 +163,7 @@ def rrhf_data_collator(tokenizer: PreTrainedTokenizer, args: CustomArguments):
     return collator
 
     
-def weighted_data_collator(tokenizer: PreTrainedTokenizer, args: CustomArguments):
+def weighted_data_collator(tokenizer: PreTrainedTokenizer, args: TrainingArguments):
     def collator(examples):
         texts = []
         prompts = []

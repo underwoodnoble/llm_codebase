@@ -4,7 +4,7 @@ from typing import Optional, List
 
 
 @dataclass
-class CustomArguments(transformers.TrainingArguments):
+class TrainingArguments(transformers.TrainingArguments):
     debug_mode: Optional[bool] = field(default=False)
     # task arguments
     task_type: Optional[str] = field(default='reward')
@@ -58,6 +58,7 @@ class CustomArguments(transformers.TrainingArguments):
     add_lm_loss: Optional[bool] = field(default=True, metadata={"help": "add language model loss when training reward model"})
     lm_loss_coeff: Optional[float] = field(default=0., metadata={"help": "the coefficient for language modeling loss."})
     lm_score_thresh: Optional[float] = field(default=0.85, metadata={"help": "the threshold to select response for language modeling."})
+    pooling_type: Optional[str] = field(default='last', metadata={"help": "how to pooling the last hidden states"})
     rm_calibration: Optional[bool] = field(default=True)
     calibration_bins: List[int] = field(default_factory=lambda:[5])
 
@@ -70,11 +71,17 @@ class CustomArguments(transformers.TrainingArguments):
     dpo_beta: Optional[float] = field(default=0.1, metadata={"help":"The beta factor in DPO loss. Higher beta means less divergence from the initial policy."})
     max_prompt_length: Optional[int] = field(default=128, metadata={"help": "The maximum length of the prompt."})
 
+    # KTO
+    kto_pair_prompt_name: Optional[str] = field(default='prompt')
+    kto_pair_answer_name: Optional[str] = field(default='answer')
+    kto_pair_label_name: Optional[str] = field(default='label')
+
 
     def __post_init__(self):
         super().__post_init__()
         valid_task_types = ["reward", "classification", "multi_objective_classification", 
-                            "sft", "offline_rejection_sampling", "offline_RRHF", "weighted_learning", "DPO"]
+                            "SFT", "offline_rejection_sampling", "offline_RRHF", "weighted_learning", "DPO",
+                            "KTO"]
         if self.task_type not in valid_task_types:
             raise ValueError(f"Invalid task type. Expected one of {valid_task_types}, but got {self.task_type}")
 
