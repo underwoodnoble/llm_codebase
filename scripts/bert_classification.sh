@@ -1,7 +1,7 @@
-REPO_DIR=/apdcephfs_cq10/share_1567347/share_info/nobelhu/code/llm_codebase
+REPO_DIR=repo_dir
 DATA_DIR=${REPO_DIR}/mydata/cls_data/daiyong
-MODEL_PATH=/apdcephfs_cq10/share_1567347/share_info/nobelhu/models/bert-base-uncased
-OUTPUT_DIR=/apdcephfs_cq10/share_1567347/share_info/nobelhu/saved_model/test/bert_rewrad_test
+MODEL_PATH=model_path
+OUTPUT_DIR=output_dir
 python3 ${REPO_DIR}/main.py \
     --task_type classification \
     --model_type bert \
