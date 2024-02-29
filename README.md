@@ -11,7 +11,6 @@ This repository is a framework for beginners to dive into llm training, inferenc
 | --- | --- | 
 | bert | Classification, Reward Model Training |
 | llama | Reward Model Training, Supervised Finetuning, Rejection Sampling, RRHF, Weighted Learning|
-| alpaca | Reward Model Training, Supervised Finetuning, Rejection Sampling, RRHF, Weighted Learning|
 
 ### Inference
 * Supported task: Reward Model Inference, LLM Inference.
@@ -33,13 +32,17 @@ For DPO, the following packages are required.
 ```bash
 pip install -r requirements/dpo.txt
 ```
+For llama1, the following packages are required.
+```bash
+pip install -r requirements/llama1.txt
+```
 ## Classification
 
 There are two ways to train a classification model in the repository. The first one is to train a model with a classification head. The second one is to train a model with a classification dict head. The classification dict head is a head that can be used to train a model with multiple classification tasks.
 
 ### Single objective classification
 
-Supported Models: Bert, Llama, Alpaca
+Supported Models: Bert, Llama
 
 Under the hood, the classification head is a linear layer on top of the model output. This repository uses transformers AutoModelForSequenceClassification to train a classification model. The following code shows how to train a classification model with a classification head.
 
@@ -50,32 +53,7 @@ Specific Arguments
 
 #### Bert
 ```bash
-REPO_DIR=repo_dir
-DATA_DIR=data_dir
-python3 ${REPO_DIR}/src/main.py \
-    --task_type classification \
-    --model_type bert \
-    --do_train True \
-    --data_paths ${DATA_DIR}/train.json \
-    --eval_data_paths ${DATA_DIR}/test.json \
-    --cls_data_text_name text \
-    --cls_data_label_name label \
-    --cls_data_label_nums 3 \
-    --num_train_epochs 10 \
-    --model_name_or_path bert-base-uncased
-    --output_dir output_dir \
-    --remove_unused_columns False \
-    --report_to none \
-    --per_device_train_batch_size 8 \
-    --per_device_eval_batch_size 8 \
-    --logging_strategy steps \
-    --logging_steps 1 \
-    --save_strategy no \
-    --num_train_epochs 1 \
-    --learning_rate 5e-5 \
-    --eval_steps 10 \
-    --evaluation_strategy steps \
-    --logging_first_step True
+bash scripts/bert_classification.sh
 ```
 
 #### Llama
@@ -92,8 +70,35 @@ DATA_DIR=data_dir
 ### Multi-objective classification
 
 ## Reward Model Training
+Supported Models: Bert, Llama
+**Specific Arguments**
+* preference_data_text_name: field name of the text in data.
+* preference_data_score_name: field name of the score in data.
+* add_lm_loss: whether to add language model loss to the reward model. (Do not support bert)
+* lm_loss_coeff: the coefficient of the language model loss. (Do not support bert)
+* pooling_type: the pooling type of the model output. The pooling type can be "last", "max", "eos", or "average". (Do not support bert)
+* rm_calibration: whether to calibrate the reward model using ece.
+* calibration_bins: ece bins
 
-## Supervised Finetuning
+**Data Format**
+```json
+{
+    "text": ["text1", "text2"],
+    "score": ["score1", "score2"]
+}
+```
+* You need to align parameter <font color='orange'><preference_data_text_name></font> with the field name of the text in data and <font color='orange'><preference_data_score_name></font> with the field name of the score in data.
+* You can specify multiple datasets in <font color='orange'><data_paths></font> and <font color='orange'><eval_data_paths></font>. If different dataset have different number of texts(scores), the data will be padded to the maximum length of the texts(scores) in the dataset(padding text with " " and padding score with -100). 
+### bert
+```bash
+bash scripts/bert_reward.sh
+```
+### Llama
+For Llama1, we recommend to use the requirements/llama1.txt to install the required packages. Because we find that higher version of transformers may degrade the preformance of Llama1.
 
-## Rejection Sampling
-
+```bash
+# Install the required packages
+pip install -r requirements/llama1.txt
+# Train the reward model
+bash scripts/llama1_reward.sh
+```
