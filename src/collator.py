@@ -41,9 +41,20 @@ def classfication_data_collator(tokenizer: PreTrainedTokenizer, args: TrainingAr
         texts = []
         labels = []
         for example in examples:
-            texts.append(tokenizer.bos_token + example['text'] + tokenizer.eos_token)
+            if args.model_type == 'llama':
+                texts.append(tokenizer.bos_token + example['text'] + tokenizer.eos_token)
+            elif args.model_type == 'bert':
+                texts.append(example['text'])
+            else:
+                raise ValueError(f"Classification task do not support model type '{args.model_type}'.")
             labels.append(args.label2id[example['label']])
-        encodings = tokenizer(texts, padding=True, truncation=True, add_special_tokens=False)
+                
+        if args.model_type == 'llama':
+            encodings = tokenizer(texts, padding=True, truncation=True, add_special_tokens=False)
+        elif args.model_type == 'bert':
+            encodings = tokenizer(texts, padding=True, truncation=True, add_special_tokens=True)
+        else:
+            raise ValueError(f"Classification task do not support model type '{args.model_type}'.")
 
         return {
             "input_ids": torch.tensor(encodings['input_ids']),

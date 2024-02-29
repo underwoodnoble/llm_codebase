@@ -164,7 +164,7 @@ def data_transform(data_list: List[Dict[str, List]], args: TrainingArguments) ->
         labels = []
         args.id2label = {}
         args.label2id = {}
-        if args.cls_data_data_text_name != 'text' or args.cls_data_label_name != 'label':
+        if args.cls_data_text_name != 'text' or args.cls_data_label_name != 'label':
             for data in data_list:
                 new_data = {
                     "text": data[args.cls_data_text_name],
@@ -173,6 +173,8 @@ def data_transform(data_list: List[Dict[str, List]], args: TrainingArguments) ->
                 new_data_list.append(new_data)
                 labels.append(new_data['label'])
         else:
+            for data in data_list:
+                labels.append(data['label'])
             new_data_list = data_list
 
         labels = list(set(labels))
