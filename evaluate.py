@@ -1,17 +1,17 @@
 from argparse import ArgumentParser
 from typing import List
-from utils import getTestDataset, loadTestTokenizerAndModel, is_main_process
+from src.utils import getTestDataset, loadTestTokenizerAndModel, is_main_process
 from accelerate import PartialState
 from accelerate.utils import gather_object
 from torch.utils.data import DataLoader
 from datasets import Dataset
-from test import compute_ppl, gpt_winer, compute_preference_confidence, compute_ece
+from src.test import compute_ppl, gpt_winer, compute_preference_confidence, compute_ece
 import json
 from tqdm import tqdm
 import torch
 from concurrent.futures import ThreadPoolExecutor
 import time
-from collator import reward_data_collator
+from src.collator import reward_data_collator
 
 def get_args():
     parser = ArgumentParser()
