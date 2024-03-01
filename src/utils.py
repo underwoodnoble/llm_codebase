@@ -70,6 +70,7 @@ def set_llama_special_tokens(tokenizer: LlamaTokenizer, model: LlamaPreTrainedMo
         special_tokens_dict["unk_token"] = DEFAULT_UNK_TOKEN
 
     num_new_tokens = tokenizer.add_special_tokens(special_tokens_dict)
+    # If not set add_eos_token to True, Llama tokenizer do not add eos token in encoding automatically.
     tokenizer.add_bos_token = True
     tokenizer.add_eos_token = True
     model.resize_token_embeddings(len(tokenizer))
