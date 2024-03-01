@@ -89,11 +89,11 @@ Supported Models: Bert, Llama
 ```
 * You need to align parameter <font color='orange'><preference_data_text_name></font> with the field name of the text in data and <font color='orange'><preference_data_score_name></font> with the field name of the score in data.
 * You can specify multiple datasets in <font color='orange'><data_paths></font> and <font color='orange'><eval_data_paths></font>. If different dataset have different number of texts(scores), the data will be padded to the maximum length of the texts(scores) in the dataset(padding text with " " and padding score with -100). 
-### bert
+### Bert reward model
 ```bash
 bash scripts/bert_reward.sh
 ```
-### Llama
+### Llama reward model
 For Llama1, we recommend to use the requirements/llama1.txt to install the required packages. Because we find that higher version of transformers may degrade the preformance of Llama1.
 
 ```bash
