@@ -1,6 +1,7 @@
 from src.arguments import TrainingArguments
 from transformers import HfArgumentParser
 from src.utils import print_rank_0, getDataset, loadTokenizerAndModel
+from typing import Dict
 
 
 def main():
@@ -126,7 +127,7 @@ def main():
         )
 
     if args.evaluate_at_beginning:
-        trainer.evaluate(eval_dataset)
+        trainer.evaluate()
         
     trainer.train()
     trainer.save_state()
