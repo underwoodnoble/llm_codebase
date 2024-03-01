@@ -8,26 +8,32 @@ from .utils import print_rank_0
 
 
 def _llm_tokenize(prompts: List[str], texts: List[str], tokenizer: PreTrainedTokenizer, args: TrainingArguments) -> Dict[str, torch.Tensor]:
-    input_ids = []
-    labels = []
-    for prompt, text in zip(prompts, texts):
-        prompt_ids = tokenizer.encode(prompt, add_special_tokens=False)
-        text_ids = tokenizer.encode(text, add_special_tokens=False)
-        label = deepcopy(text_ids)
-        if not args.only_predict_answer:
-            label[:len(prompt_ids)] = [args.ignore_token_id] * (len(prompt_ids))
-        text_ids = [tokenizer.bos_token_id] + text_ids + [tokenizer.eos_token_id]
-        label = [tokenizer.bos_token_id] + label + [tokenizer.eos_token_id]
-        input_ids.append(torch.tensor(text_ids[-args.model_max_length:]))
-
-        labels.append(torch.tensor(label[-args.model_max_length:]))
-    
-    input_ids = pad_sequence(input_ids, batch_first=True, padding_value=tokenizer.pad_token_id)
-    if args.pad_labels_with_ignore:
-        labels = pad_sequence(input_ids, batch_first=True, padding_value=args.ignore_token_id)
+    if prompts is None:
+        encodings = tokenizer(texts, add_special_tokens=True)
+        input_ids = encodings['input_ids']
+        attention_mask = encodings['attention_mask']
+        labels = deepcopy(input_ids)
     else:
-        labels = pad_sequence(input_ids, batch_first=True, padding_value=tokenizer.pad_token_id)
-    attention_mask = torch.ne(input_ids, tokenizer.pad_token_id)
+        input_ids = []
+        labels = []
+        for prompt, text in zip(prompts, texts):
+            prompt_ids = tokenizer.encode(prompt, add_special_tokens=False)
+            text_ids = tokenizer.encode(text, add_special_tokens=False)
+            label = deepcopy(text_ids)
+            if not args.only_predict_answer:
+                label[:len(prompt_ids)] = [args.ignore_token_id] * (len(prompt_ids))
+            text_ids = [tokenizer.bos_token_id] + text_ids + [tokenizer.eos_token_id]
+            label = [tokenizer.bos_token_id] + label + [tokenizer.eos_token_id]
+            input_ids.append(torch.tensor(text_ids[-args.model_max_length:]))
+
+            labels.append(torch.tensor(label[-args.model_max_length:]))
+        
+        input_ids = pad_sequence(input_ids, batch_first=True, padding_value=tokenizer.pad_token_id)
+        if args.pad_labels_with_ignore:
+            labels = pad_sequence(input_ids, batch_first=True, padding_value=args.ignore_token_id)
+        else:
+            labels = pad_sequence(input_ids, batch_first=True, padding_value=tokenizer.pad_token_id)
+        attention_mask = torch.ne(input_ids, tokenizer.pad_token_id)
 
     return {
         "input_ids": input_ids,
@@ -41,20 +47,10 @@ def classfication_data_collator(tokenizer: PreTrainedTokenizer, args: TrainingAr
         texts = []
         labels = []
         for example in examples:
-            if args.model_type == 'llama':
-                texts.append(tokenizer.bos_token + example['text'] + tokenizer.eos_token)
-            elif args.model_type == 'bert':
-                texts.append(example['text'])
-            else:
-                raise ValueError(f"Classification task do not support model type '{args.model_type}'.")
+            texts.append(example['text'])
             labels.append(args.label2id[example['label']])
                 
-        if args.model_type == 'llama':
-            encodings = tokenizer(texts, padding=True, truncation=True, add_special_tokens=False)
-        elif args.model_type == 'bert':
-            encodings = tokenizer(texts, padding=True, truncation=True, add_special_tokens=True)
-        else:
-            raise ValueError(f"Classification task do not support model type '{args.model_type}'.")
+        encodings = tokenizer(texts, padding=True, truncation=True, add_special_tokens=True)
 
         return {
             "input_ids": torch.tensor(encodings['input_ids']),
@@ -80,16 +76,11 @@ def reward_data_collator(tokenizer: PreTrainedTokenizer, args: TrainingArguments
             if len(example['texts']) < num_sample:
                 example['texts'].extend([' ']*(num_sample - len(example['texts'])))
                 example['scores'].extend([-100]*(num_sample - len(example['scores'])))
-            if args.model_type == 'llama':
-                all_texts.extend([tokenizer.bos_token + text + tokenizer.eos_token for text in example['texts']])
-            else:
-                all_texts.extend(example['texts'])
+            all_texts.extend(example['texts'])
             all_scores.extend(example['scores'])
 
-        if args.model_type == 'llama':
-            encodings = tokenizer(all_texts, padding=True, truncation=True, add_special_tokens=False)
-        else:
-            encodings = tokenizer(all_texts, padding=True, truncation=True, add_special_tokens=True)
+        encodings = tokenizer(all_texts, padding=True, truncation=True, add_special_tokens=True)
+
         return {
             "input_ids": torch.tensor(encodings['input_ids']).reshape(batch_size, num_sample, -1),
             "attention_mask": torch.tensor(encodings['attention_mask']).reshape(batch_size, num_sample, -1),
@@ -120,7 +111,7 @@ def rjs_data_collator(tokenizer: PreTrainedTokenizer, args: TrainingArguments):
             texts = example['texts']
             scores = example['scores']
             best_text = texts[torch.argmax(torch.tensor(scores))]
-            best_texts.append(best_text + tokenizer.eos_token)
+            best_texts.append(best_text)
         
         if not args.only_predict_answer:
             prompts = None

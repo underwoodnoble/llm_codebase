@@ -70,6 +70,8 @@ def set_llama_special_tokens(tokenizer: LlamaTokenizer, model: LlamaPreTrainedMo
         special_tokens_dict["unk_token"] = DEFAULT_UNK_TOKEN
 
     num_new_tokens = tokenizer.add_special_tokens(special_tokens_dict)
+    tokenizer.add_bos_token = True
+    tokenizer.add_eos_token = True
     model.resize_token_embeddings(len(tokenizer))
 
     if num_new_tokens > 0:
