@@ -52,7 +52,8 @@ class TrainingArguments(transformers.TrainingArguments):
     truncation_side: Optional[str] = field(default='left', metadata={"help": "which side to truncate when sequence is too long."})
     padding_side: Optional[str] = field(default='right', metadata={"help": "which side to padding."})
     only_predict_answer: Optional[bool] = field(default=True, metadata={"help": "Only predict the answer."})
-    pad_labels_with_ignore: Optional[bool] = field(default=False, metadata={"help": "Whether use ignore token to pad labels"})
+    pad_labels_with_ignore: Optional[bool] = field(default=False, metadata={"help": "Whether use ignore token to pad labels."})
+    evaluate_at_beginning: Optional[bool] = field(default=True, metadata={"help": "Whether evaluate at the beginning."})
 
     ## Reward model training arguments
     add_lm_loss: Optional[bool] = field(default=True, metadata={"help": "add language model loss when training reward model"})

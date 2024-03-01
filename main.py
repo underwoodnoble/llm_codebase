@@ -125,6 +125,9 @@ def main():
             loss_type=loss_type
         )
 
+    if args.evaluate_at_beginning:
+        trainer.evaluate(eval_dataset)
+        
     trainer.train()
     trainer.save_state()
     trainer.save_model(output_dir=args.output_dir)
