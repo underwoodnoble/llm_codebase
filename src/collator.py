@@ -1,10 +1,11 @@
 import torch
 from .arguments import TrainingArguments
-from transformers import PreTrainedTokenizer
+from transformers import PreTrainedTokenizer, PreTrainedModel
 from typing import List, Dict
 from copy import deepcopy
 from torch.nn.utils.rnn import pad_sequence
 from .utils import print_rank_0
+from .models.utils import RefModel
 
 
 def _llm_tokenize(prompts: List[str], texts: List[str], tokenizer: PreTrainedTokenizer, args: TrainingArguments) -> Dict[str, torch.Tensor]:
@@ -20,10 +21,15 @@ def _llm_tokenize(prompts: List[str], texts: List[str], tokenizer: PreTrainedTok
             prompt_ids = tokenizer.encode(prompt, add_special_tokens=False)
             text_ids = tokenizer.encode(text, add_special_tokens=False)
             label = deepcopy(text_ids)
-            if not args.only_predict_answer:
-                label[:len(prompt_ids)] = [args.ignore_token_id] * (len(prompt_ids))
+            response_start_idx = len(prompt_ids)
+            if prompt_ids != text_ids[:response_start_idx]:
+                response_start_idx -= 1
+                prompt_ids = text_ids[:response_start_idx]
             text_ids = [tokenizer.bos_token_id] + text_ids + [tokenizer.eos_token_id]
             label = [tokenizer.bos_token_id] + label + [tokenizer.eos_token_id]
+            if args.only_predict_answer:
+                label[:len(prompt_ids) + 1] = [args.ignore_token_id] * (len(prompt_ids) + 1)
+
             input_ids.append(torch.tensor(text_ids[-args.model_max_length:]))
 
             labels.append(torch.tensor(label[-args.model_max_length:]))
@@ -182,3 +188,23 @@ def weighted_data_collator(tokenizer: PreTrainedTokenizer, args: TrainingArgumen
     
     return collator
 
+
+def kto_data_collator(tokenizer: PreTrainedTokenizer, args: TrainingArguments):
+    def collator(examples):
+        texts = []
+        prompts = []
+        scores = []
+        ref_probs = []
+        for example in examples:
+            text = example['prompt'] + example['answer']
+            texts.append(text)
+            prompts.append(example['prompt'])
+            scores.append(example['score'])
+            if hasattr(example, 'ref_prob'):
+                ref_probs.append(example['ref_prob'])
+        
+        ret = _llm_tokenize(prompts, texts, tokenizer, args)
+        ret['scores'] = torch.tensor(scores)
+        return ret
+    
+    return collator
