@@ -73,7 +73,7 @@ def compute_reward_metrics(args, predict: EvalPrediction):
 def compute_classification_metrics(eval_pred: EvalPrediction):
     predictions, labels = eval_pred
     predictions = np.argmax(predictions, axis=1)
-    acc = (predictions == labels).sum() / len(labels)
+    acc: np.ndarray = (predictions == labels).sum() / len(labels)
     return {
-        "acc": acc
+        "acc": acc.item()
     }
