@@ -6,6 +6,8 @@ from copy import deepcopy
 from torch.nn.utils.rnn import pad_sequence
 from .utils import print_rank_0
 from .models.utils import RefModel
+from datasets import Dataset
+from random import sample
 
 
 def _llm_tokenize(prompts: List[str], texts: List[str], tokenizer: PreTrainedTokenizer, args: TrainingArguments) -> Dict[str, torch.Tensor]:
@@ -31,7 +33,6 @@ def _llm_tokenize(prompts: List[str], texts: List[str], tokenizer: PreTrainedTok
                 label[:len(prompt_ids) + 1] = [args.ignore_token_id] * (len(prompt_ids) + 1)
 
             input_ids.append(torch.tensor(text_ids[-args.model_max_length:]))
-
             labels.append(torch.tensor(label[-args.model_max_length:]))
         
         input_ids = pad_sequence(input_ids, batch_first=True, padding_value=tokenizer.pad_token_id)
@@ -189,22 +190,29 @@ def weighted_data_collator(tokenizer: PreTrainedTokenizer, args: TrainingArgumen
     return collator
 
 
-def kto_data_collator(tokenizer: PreTrainedTokenizer, args: TrainingArguments):
+def kto_data_collator(tokenizer: PreTrainedTokenizer, args: TrainingArguments, dataset: Dataset):
     def collator(examples):
         texts = []
+        kl_texts = []
+        kl_prompts = []
         prompts = []
         scores = []
-        ref_probs = []
         for example in examples:
-            text = example['prompt'] + example['answer']
+            text = example['prompt'] + example['completion']
             texts.append(text)
             prompts.append(example['prompt'])
             scores.append(example['score'])
-            if hasattr(example, 'ref_prob'):
-                ref_probs.append(example['ref_prob'])
+            kl_completions = sample(dataset['completion'], args.kto_num_of_kl_completions_per_prompt)
+            for completion in kl_completions:
+                kl_texts.append(example['prompt'] + completion)
+            kl_prompts.extend([example['prompt']] * args.kto_num_of_kl_completions_per_prompt)
         
-        ret = _llm_tokenize(prompts, texts, tokenizer, args)
-        ret['scores'] = torch.tensor(scores)
-        return ret
+        target = _llm_tokenize(prompts, texts, tokenizer, args)
+        kl = _llm_tokenize(kl_prompts, kl_completions, tokenizer, args)
+        target['scores'] = torch.tensor(scores)
+        return {
+            "target": target,
+            "kl": kl
+        }
     
     return collator
