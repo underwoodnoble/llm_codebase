@@ -17,7 +17,7 @@ class RewardModelTrainer(Trainer):
 
         total_mask = (score_mask_larger + score_mask_smaller) * pad_mask
 
-        log_prob = nn.functional.logsigmoid(logits_diff * score_mask * pad_mask)
+        log_prob = nn.functional.logsigmoid(logits_diff * score_mask)
         total_loss = - (log_prob * total_mask).sum()
         total_pairs = total_mask.sum()
         return total_loss / total_pairs if total_pairs > 0 else total_loss
