@@ -1,6 +1,6 @@
 from src.arguments import TrainingArguments
 from transformers import HfArgumentParser
-from src.utils import print_rank_0, getDataset, loadTokenizerAndModel, get_attributes_from_other_arguments
+from src.utils import print_rank_0, getDataset, loadTokenizerAndModel
 from typing import Dict
 
 
@@ -158,6 +158,7 @@ def main():
                 eval_result.update(result)
         else:
             eval_result = trainer.evaluate()
+        print_rank_0(eval_result)
         trainer.log_metrics('eval', eval_result)
 
 if __name__ == '__main__':
