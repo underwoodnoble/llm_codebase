@@ -1,10 +1,10 @@
 from transformers import LlamaTokenizer, LlamaForCausalLM, GenerationConfig, PreTrainedTokenizer, PreTrainedModel, AutoTokenizer
-from model.RewardModel import PythiaRewardModel, LlamaRewardModel
+from src.models.RewardModel import PythiaRewardModel, LlamaRewardModel
 import json
 from typing import List, Dict, Tuple
 import torch
 from argparse import ArgumentParser
-from utils import read_json_or_jsonl_data
+from src.utils import read_json_or_jsonl_data, print_rank_0
 from accelerate import PartialState
 
 
@@ -78,8 +78,8 @@ def dialog_to_llama_tokens(tokenizer: LlamaTokenizer, dialog: List[Dict[str, str
 def load_tokenizer_and_model(args) -> Tuple[PreTrainedModel, PreTrainedModel]:
     if args.task_type == 'llm_inference':
         if args.model_type == 'llama':
-            tokenizer = LlamaTokenizer.from_pretrained(args.model_path)
-            model = LlamaForCausalLM.from_pretrained(args.model_path)
+            tokenizer = LlamaTokenizer.from_pretrained(args.model_name_or_path)
+            model = LlamaForCausalLM.from_pretrained(args.model_name_or_path)
     elif args.task_type == 'reward_model_inference':
         if args.model_type == 'pythia':
             tokenizer = AutoTokenizer.from_pretrained(args.model_name_or_path, trucation_side='left', trust_remote_code=True)
@@ -109,6 +109,7 @@ def llm_inference(tokenizer: PreTrainedTokenizer, model: PreTrainedModel,
             print(answer)
             answers.append(answer)
         new_data = {"id": data['id'], "prompt": prompt, "answer": answers}
+        print_rank_0(new_data)
         new_dataset.append(new_data)
     with open(args.save_path, 'a+') as f:
         for data in new_dataset:
@@ -128,6 +129,7 @@ def reward_model_inference(tokenzier: PreTrainedTokenizer, model: PreTrainedMode
             "texts": [prompt+'<sep>'+answer for answer in answers],
             "scores": rewards.tolist()
         }
+        print_rank_0(new_data)
         new_dataset.append(new_data)
     with open(args.save_path, 'a+') as f:
         for new_data in new_dataset:
@@ -149,8 +151,8 @@ def main(args):
             if args.task_type == 'llm_inference':
                 generation_config = GenerationConfig.from_pretrained(args.model_path, do_sample=True, max_new_tokens=args.max_new_tokens)
                 llm_inference(tokenizer, model, generation_config, sub_dataset, args)
-            elif args.task_tye == 'reward_model_inference':
-                reward_model_inference(tokenizer, model, dataset)
+            elif args.task_type == 'reward_model_inference':
+                reward_model_inference(tokenizer, model, dataset, args)
 
 
 
@@ -163,7 +165,7 @@ if __name__ == '__main__':
         '--task_type', type=str, choices=['llm_inference', 'reward_model_inference']
     )
     parser.add_argument(
-        '--model_path', type=str
+        '--model_name_or_path', type=str
     )
     parser.add_argument(
         '--data_path', type=str
