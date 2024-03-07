@@ -4,7 +4,7 @@ This repository is a framework for beginners to dive into llm training, inferenc
 ## Overview
 
 ### Training
-* Supported task：Classification, Reward Model Training, Supervised Finetuning, Rejection Sampling, Weighted Learning, RRHF
+* Supported task：Classification, Reward Model Training, Supervised Finetuning, Rejection Sampling, Weighted Learning, RRHF, DPO, KTO
 * Supported model: bert, llama
 
 | Model | Supported training method |
@@ -22,17 +22,17 @@ This repository is a framework for beginners to dive into llm training, inferenc
     * PPL: llama
 
 ## Installation
-For most of the tasks, the following packages are required.
+For most of the tasks, use the following command to install the required packages.
 ```bash
 git clone https://github.com/underwoodnoble/llm_codebase.git
 cd llm_codebase
 pip install -r requirements/normal.txt
 ```
-For DPO, the following packages are required.
+For DPO, use the following command to install the required packages.
 ```bash
 pip install -r requirements/dpo.txt
 ```
-For llama1, the following packages are required.
+For llama1, use the following command to install the required packages.
 ```bash
 pip install -r requirements/llama1.txt
 ```
