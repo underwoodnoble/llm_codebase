@@ -218,6 +218,7 @@ def getDataset(args: TrainingArguments, type='train') -> Union[Dataset, Dict[str
             data_paths = args.data_paths
         else:
             data_paths = [os.path.join(args.data_dir, path) for path in os.listdir(args.data_dir)]
+        print_rank_0(data_paths)
         data_list = data_transform(load_data_from_paths(data_paths), args)
         return Dataset.from_list(data_list)
     else:

@@ -1,2 +1,0 @@
-from .BaichuanClassification import BaichuanClassifer, BaichuanClassiferConfig
-from .LlamaClassification import LlamaClassifer, LlamaClassiferConfig

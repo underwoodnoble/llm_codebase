@@ -141,16 +141,9 @@ def main():
         
 
     if args.evaluate_at_beginning and eval_dataset is not None:
-        print_rank_0(">>>>>> Evaluate at the beginning:")
-        if isinstance(eval_dataset, Dict):
-            eval_result = {}
-            for key, dataset in eval_dataset.items():
-                result = trainer.evaluate(dataset, metric_key_prefix="eval_"+key) 
-                eval_result.update(result)
-        else:
-            eval_result = trainer.evaluate()
-        trainer.log_metrics('eval', eval_result)
-        
+        from src.callbacks import EvaluateFirstStepCallback
+        trainer.add_callback(EvaluateFirstStepCallback())
+
     trainer.train()
     if args.save_training_states:
         trainer.save_state()
@@ -162,6 +155,7 @@ def main():
             eval_result = {}
             for key, dataset in eval_dataset.items():
                 result = trainer.evaluate(dataset, metric_key_prefix="eval_"+key)
+                eval_result.update(result)
         else:
             eval_result = trainer.evaluate()
         trainer.log_metrics('eval', eval_result)
