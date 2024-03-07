@@ -140,7 +140,8 @@ def main():
         )
         
 
-    if args.evaluate_at_beginning:
+    if args.evaluate_at_beginning and eval_dataset is not None:
+        print_rank_0(">>>>>> Evaluate at the beginning:")
         if isinstance(eval_dataset, Dict):
             eval_result = {}
             for key, dataset in eval_dataset.items():
@@ -151,8 +152,19 @@ def main():
         trainer.log_metrics('eval', eval_result)
         
     trainer.train()
-    trainer.save_state()
+    if args.save_training_states:
+        trainer.save_state()
     trainer.save_model(output_dir=args.output_dir)
+
+    print_rank_0(">>>>>> Final evaluation:")
+    if eval_dataset is not None:
+        if isinstance(eval_dataset, Dict):
+            eval_result = {}
+            for key, dataset in eval_dataset.items():
+                result = trainer.evaluate(dataset, metric_key_prefix="eval_"+key)
+        else:
+            eval_result = trainer.evaluate()
+        trainer.log_metrics('eval', eval_result)
 
 if __name__ == '__main__':
     main()
