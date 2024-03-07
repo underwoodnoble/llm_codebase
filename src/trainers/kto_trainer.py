@@ -66,7 +66,7 @@ class KTOTrainer(Trainer):
         return_outputs=False
     ) -> Union[torch.Tensor, Tuple[torch.Tensor, Dict[str, torch.Tensor]]]:
         if self.args.debug_mode:
-            print_rank_0(f"check inputs: {inputs}")
+            print_rank_0(f"check inputs:\n{inputs}")
         
         device = model.device
         target = inputs['target']
@@ -78,7 +78,7 @@ class KTOTrainer(Trainer):
 
         rewards = self.args.kto_beta * KTOTrainer.compute_reward(model, input_ids, attention_mask, labels)
         if self.args.debug_mode:
-            print_rank_0(rewards)
+            print_rank_0(f"check rewards:\n{rewards}")
         ref_kl = KTOTrainer.compute_ref_kl(model, kl_inputs, self.args.eval_batch_size)
         ref_kl = self.accelerator.gather(ref_kl).mean().clamp(min=0)
         
@@ -86,6 +86,6 @@ class KTOTrainer(Trainer):
         v = nn.functional.sigmoid((rewards.to(device) - ref_kl.to(device)) * scores)
         loss = (weights * (1 - v)).mean()
         if self.args.debug_mode:
-            print_rank_0(loss)
+            print_rank_0(f"check loss:\n{loss}")
 
         return (loss, rewards) if return_outputs else loss
