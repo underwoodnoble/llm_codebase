@@ -74,8 +74,12 @@ class TrainingArguments(transformers.TrainingArguments):
 
     # KTO
     kto_pair_prompt_name: Optional[str] = field(default='prompt')
-    kto_pair_answer_name: Optional[str] = field(default='answer')
+    kto_pair_answer_name: Optional[str] = field(default='completion')
     kto_pair_label_name: Optional[str] = field(default='label')
+    kto_beta: Optional[float] = field(default=0.1)
+    kto_desirable_weight: Optional[float] = field(default=1.0)
+    kto_undesirable_weight: Optional[float] = field(default=1.0)
+    kto_num_of_kl_completions_per_prompt: Optional[int] = field(default=1000)
 
 
     def __post_init__(self):
