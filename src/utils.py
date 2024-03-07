@@ -3,7 +3,8 @@ import json
 from tqdm import tqdm
 import transformers
 from transformers import (LlamaTokenizer, LlamaPreTrainedModel, BertForSequenceClassification, BertConfig, 
-BertTokenizer, AutoConfig, LlamaForCausalLM, AutoModelForSequenceClassification, AutoTokenizer, PreTrainedTokenizer, PreTrainedModel)
+BertTokenizer, AutoConfig, LlamaForCausalLM, AutoModelForSequenceClassification, AutoTokenizer, PreTrainedTokenizer,
+PreTrainedModel, AutoModelForCausalLM)
 from .models.RewardModel import LlamaRewardModel
 from .arguments import TrainingArguments
 import os
@@ -54,7 +55,7 @@ def load_data_from_paths(data_paths: List[str]) -> List[Dict[str, Any]]:
     return total_data_list
 
     
-def set_llama_special_tokens(tokenizer: LlamaTokenizer, model: LlamaPreTrainedModel) -> None:
+def set_special_tokens(tokenizer: LlamaTokenizer, model: LlamaPreTrainedModel) -> None:
     DEFAULT_PAD_TOKEN = "<pad>"
     DEFAULT_EOS_TOKEN = "</s>"
     DEFAULT_BOS_TOKEN = "<s>"
@@ -257,8 +258,8 @@ def loadTokenizerAndModel(args: TrainingArguments) -> Tuple[PreTrainedTokenizer,
             tokenizer = LlamaTokenizer.from_pretrained(args.model_name_or_path, truncation_side=args.truncation_side, padding_side=args.padding_side)
             tokenizer.model_max_length = args.model_max_length
             model = LlamaRewardModel.from_pretrained(args.model_name_or_path)
-            if args.set_llama_special_tokens:
-                set_llama_special_tokens(tokenizer, model)
+            if args.set_special_tokens:
+                set_special_tokens(tokenizer, model)
             else:
                 if tokenizer.pad_token is None:
                     tokenizer.pad_token_id = 0
@@ -271,8 +272,8 @@ def loadTokenizerAndModel(args: TrainingArguments) -> Tuple[PreTrainedTokenizer,
             tokenizer = LlamaTokenizer.from_pretrained(args.model_name_or_path, truncation_side=args.truncation_side, padding_side=args.padding_side)
             tokenizer.model_max_length = args.model_max_length
             model = LlamaForCausalLM.from_pretrained(args.model_name_or_path)
-            if args.set_llama_special_tokens:
-                set_llama_special_tokens(tokenizer, model)
+            if args.set_special_tokens:
+                set_special_tokens(tokenizer, model)
             else:
                 if tokenizer.pad_token is None:
                     tokenizer.pad_token_id = 0
@@ -287,8 +288,8 @@ def loadTokenizerAndModel(args: TrainingArguments) -> Tuple[PreTrainedTokenizer,
         tokenizer.model_max_length = args.model_max_length
         model = AutoModelForSequenceClassification.from_pretrained(args.model_name_or_path, config=config)
         if args.model_type == 'llama':
-            if args.set_llama_special_tokens:
-                set_llama_special_tokens(tokenizer, model)
+            if args.set_special_tokens:
+                set_special_tokens(tokenizer, model)
             else:
                 tokenizer.pad_token_id = 0
                 model.config.pad_token_id = 0
@@ -300,13 +301,21 @@ def loadTokenizerAndModel(args: TrainingArguments) -> Tuple[PreTrainedTokenizer,
             model = LlamaForCausalLM.from_pretrained(args.model_name_or_path)
             ref_tokenizer = LlamaTokenizer.from_pretrained(args.model_name_or_path, truncation_side=args.truncation_side, padding_side=args.padding_side)
             ref_model = LlamaForCausalLM.from_pretrained(args.model_name_or_path)
-            if args.set_llama_special_tokens:
-                set_llama_special_tokens(tokenizer, model)       
-                set_llama_special_tokens(ref_tokenizer, ref_model)
-            else:
-                tokenizer.pad_token_id = 0
-                model.config.pad_token_id = 0
-                ref_model.config.pad_token_id = 0
+        elif args.model_type == 'other':
+            tokenizer = AutoTokenizer.from_pretrained(args.model_name_or_path, truncation_side=args.truncation_side, padding_side=args.padding_side, trust_remote_code=True)
+            tokenizer.model_max_length = args.model_max_length
+            model = AutoModelForCausalLM.from_pretrained(args.model_name_or_path, trust_remote_code=True)
+            ref_tokenizer = AutoTokenizer.from_pretrained(args.model_name_or_path, truncation_side=args.truncation_side, padding_side=args.padding_side, trust_remote_code=True)
+            ref_model = AutoModelForCausalLM.from_pretrained(args.model_name_or_path, trust_remote_code=True)
+
+        if args.set_special_tokens:
+            set_special_tokens(tokenizer, model)       
+            set_special_tokens(ref_tokenizer, ref_model)
+        else:
+            tokenizer.pad_token_id = 0
+            model.config.pad_token_id = 0
+            ref_model.config.pad_token_id = 0
+
         return tokenizer, model, ref_model
     
     return tokenizer, model, None

@@ -45,7 +45,7 @@ class TrainingArguments(transformers.TrainingArguments):
     model_name_or_path: Optional[str] = field(default=None, metadata={"help": "pretrained model path"})
     model_max_length: Optional[int] = field(default=512, metadata={"help": "the max sentence sequence length."})
     ignore_token_id: Optional[int] = field(default=-100, metadata={"help": "token id used to inplace query ids."})
-    set_llama_special_tokens: Optional[bool] = field(default=True, metadata={"help": "whether or not add special token in tokenizer."})
+    set_special_tokens: Optional[bool] = field(default=True, metadata={"help": "whether or not add special token in tokenizer."})
     
     #########################################################################################
     # training arguments
@@ -54,6 +54,7 @@ class TrainingArguments(transformers.TrainingArguments):
     only_predict_answer: Optional[bool] = field(default=True, metadata={"help": "Only predict the answer."})
     pad_labels_with_ignore: Optional[bool] = field(default=False, metadata={"help": "Whether use ignore token to pad labels."})
     evaluate_at_beginning: Optional[bool] = field(default=True, metadata={"help": "Whether evaluate at the beginning."})
+    save_training_states: Optional[bool] = field(default=False, metadata={"help": "Whether or not save training states."})
 
     ## Reward model training arguments
     add_lm_loss: Optional[bool] = field(default=True, metadata={"help": "add language model loss when training reward model"})
@@ -97,7 +98,7 @@ class TrainingArguments(transformers.TrainingArguments):
         if self.eval_dataset_merge_mode not in ['separate', 'merge', 'both']:
             raise ValueError(f"Ivalid eval_dataset_merge_mode, Expected one of ['separate', 'merge', 'both'], bug got {self.eval_dataset_merge_mode}")
 
-        valid_model_types = ['bert', 'llama', 'baichuan']
+        valid_model_types = ['bert', 'llama', 'baichuan', 'other']
         if self.model_type not in valid_model_types:
             raise ValueError(f"Invalid model type. Expected one of {valid_model_types}, but got {self.model_type}.")
         if self.model_name_or_path is None:
