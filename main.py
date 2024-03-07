@@ -1,6 +1,6 @@
 from src.arguments import TrainingArguments
 from transformers import HfArgumentParser
-from src.utils import print_rank_0, getDataset, loadTokenizerAndModel
+from src.utils import print_rank_0, getDataset, loadTokenizerAndModel, get_attributes_from_other_arguments
 from typing import Dict
 
 
@@ -25,7 +25,7 @@ def main():
     print_rank_0(model)
 
     if args.task_type == 'reward':
-        from src.trainer import RewardModelTrainer
+        from src.trainers import RewardModelTrainer
         from src.collator import reward_data_collator
         from src.metrics import compute_reward_metrics
         trainer = RewardModelTrainer(
@@ -72,7 +72,7 @@ def main():
         )
 
     elif args.task_type == 'weighted_learning':
-        from src.trainer import WeightedTrainer
+        from src.trainers import WeightedTrainer
         from src.collator import weighted_data_collator
 
         print_rank_0("Using weighted learning data collator")
@@ -89,7 +89,7 @@ def main():
 
     elif args.task_type == 'offline_RRHF':
         from src.collator import rrhf_data_collator
-        from src.trainer import RRHFTrainer
+        from src.trainers import RRHFTrainer
 
         print_rank_0("Using offline RRHF data collator")
         data_collator = rrhf_data_collator(tokenizer, args)
@@ -102,15 +102,10 @@ def main():
             tokenizer=tokenizer
         )
 
-    elif args.task_type in ['DPO', 'KTO']:
+    elif args.task_type == 'DPO':
         from trl import DPOTrainer
         
-        if args.task_type == 'DPO':
-            print_rank_0("Using DPO data collator")
-            loss_type = 'sigmoid'
-        if args.task_type == 'KTO':
-            print_rank_0("Using KTO data collator")
-            loss_type = 'kto_pair'
+        print_rank_0("Using DPO data collator")
         trainer = DPOTrainer(
             model=model,
             ref_model=ref_model,
@@ -123,11 +118,37 @@ def main():
             padding_value=tokenizer.pad_token_id,
             max_length=tokenizer.model_max_length,
             max_prompt_length=args.max_prompt_length,
-            loss_type=loss_type
         )
+    
+    elif args.task_type == 'KTO':
+        from src.collator import kto_data_collator
+        from src.trainers import KTOTrainer
+        print_rank_0("Using KTO data collator")
+        data_collator = kto_data_collator(tokenizer, args, train_dataset)
+        
+        model.ref_model = ref_model
+        for param in model.ref_model.parameters():
+            param.requires_grad = False
+
+        trainer = KTOTrainer(
+            model=model,
+            args=args,
+            data_collator=data_collator,
+            train_dataset=train_dataset,
+            eval_dataset=eval_dataset,
+            tokenizer=tokenizer
+        )
+        
 
     if args.evaluate_at_beginning:
-        trainer.evaluate()
+        if isinstance(eval_dataset, Dict):
+            eval_result = {}
+            for key, dataset in eval_dataset.items():
+                result = trainer.evaluate(dataset, metric_key_prefix="eval_"+key) 
+                eval_result.update(result)
+        else:
+            eval_result = trainer.evaluate()
+        trainer.log_metrics('eval', eval_result)
         
     trainer.train()
     trainer.save_state()
