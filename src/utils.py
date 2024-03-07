@@ -1,12 +1,13 @@
 import torch
 import json
 from tqdm import tqdm
+import transformers
 from transformers import (LlamaTokenizer, LlamaPreTrainedModel, BertForSequenceClassification, BertConfig, 
-BertTokenizer, AutoConfig, LlamaForCausalLM, AutoModelForSequenceClassification, AutoTokenizer, PreTrainedTokenizer, PreTrainedModel, BertForMaskedLM)
-from .model.RewardModel import LlamaRewardModel
+BertTokenizer, AutoConfig, LlamaForCausalLM, AutoModelForSequenceClassification, AutoTokenizer, PreTrainedTokenizer, PreTrainedModel)
+from .models.RewardModel import LlamaRewardModel
 from .arguments import TrainingArguments
 import os
-from typing import List, Dict, Any, Optional, Tuple
+from typing import List, Dict, Any, Optional, Tuple, Union
 from datasets import Dataset
 
 
@@ -73,6 +74,9 @@ def set_llama_special_tokens(tokenizer: LlamaTokenizer, model: LlamaPreTrainedMo
     # If not set add_eos_token to True, Llama tokenizer do not add eos token in encoding automatically.
     tokenizer.add_bos_token = True
     tokenizer.add_eos_token = True
+    model.config.pad_token_id = tokenizer.pad_token_id
+    model.config.eos_token_id = tokenizer.eos_token_id
+    model.config.bos_token_id = tokenizer.bos_token_id
     model.resize_token_embeddings(len(tokenizer))
 
     if num_new_tokens > 0:
@@ -189,12 +193,12 @@ def data_transform(data_list: List[Dict[str, List]], args: TrainingArguments) ->
             args.cls_data_label_nums = len(labels)
     
     elif args.task_type == 'KTO':
-        if args.kto_pair_prompt_name != 'prompt' or args.kto_pair_answer_name != 'answer' or args.kto_pair_label_name != 'label':
+        if args.kto_pair_prompt_name != 'prompt' or args.kto_pair_answer_name != 'completion' or args.kto_pair_label_name != 'label':
             for data in data_list:
                 new_data = {
                     "prompt": data[args.kto_pair_prompt_name],
-                    "answer": data[args.kto_pair_answer_name],
-                    "label": data[args.kto_pair_label_name]
+                    "completion": data[args.kto_pair_answer_name],
+                    "score": data[args.kto_pair_label_name]
                 }
                 new_data_list.append(new_data)
         else:
@@ -205,7 +209,7 @@ def data_transform(data_list: List[Dict[str, List]], args: TrainingArguments) ->
 
     return new_data_list
 
-def getDataset(args: TrainingArguments, type='train') -> Dataset:
+def getDataset(args: TrainingArguments, type='train') -> Union[Dataset, Dict[str, Dataset]]:
     if type == 'train':
         if args.data_paths is None and args.data_dir is None:
             return None
@@ -363,3 +367,11 @@ def loadTestTokenizerAndModel(args) -> Tuple[PreTrainedTokenizer, PreTrainedMode
             model = LlamaRewardModel.from_pretrained(args.model_name_or_path)
 
     return tokenizer, model
+
+
+def get_attributes_from_other_arguments(args1: transformers.TrainingArguments, args2: transformers.TrainingArguments):
+    for key, value in args2.to_dict().items():
+        if hasattr(args1, key):
+            setattr(args1, key, value)
+    
+    return args1
