@@ -1,5 +1,5 @@
 from transformers import AutoModelForCausalLM, AutoTokenizer
-from model.RewardModel import LlamaRewardModel, PythiaRewardModel
+from src.models.RewardModel import LlamaRewardModel, PythiaRewardModel
 from typing import List
 import torch
 from fastapi import FastAPI, Body
