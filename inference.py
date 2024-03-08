@@ -113,7 +113,7 @@ def llm_inference(tokenizer: PreTrainedTokenizer, model: PreTrainedModel,
         new_dataset.append(new_data)
     with open(args.save_path, 'a+') as f:
         for data in new_dataset:
-            f.write(json.dumps(data) + '\n')
+            f.write(json.dumps(data, ensure_ascii=False) + '\n')
             
 def reward_model_inference(tokenzier: PreTrainedTokenizer, model: PreTrainedModel, 
                            dataset: List[Dict[str, str]], args):
@@ -133,7 +133,7 @@ def reward_model_inference(tokenzier: PreTrainedTokenizer, model: PreTrainedMode
         new_dataset.append(new_data)
     with open(args.save_path, 'a+') as f:
         for new_data in new_dataset:
-            s = json.dumps(new_data)
+            s = json.dumps(new_data, ensure_ascii=False)
             f.write(s+'\n')
 
 def main(args):
