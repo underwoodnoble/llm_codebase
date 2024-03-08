@@ -377,11 +377,3 @@ def loadTestTokenizerAndModel(args) -> Tuple[PreTrainedTokenizer, PreTrainedMode
             model = LlamaRewardModel.from_pretrained(args.model_name_or_path)
 
     return tokenizer, model
-
-
-def get_attributes_from_other_arguments(args1: transformers.TrainingArguments, args2: transformers.TrainingArguments):
-    for key, value in args2.to_dict().items():
-        if hasattr(args1, key):
-            setattr(args1, key, value)
-    
-    return args1
