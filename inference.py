@@ -127,7 +127,7 @@ def reward_model_inference(tokenzier: PreTrainedTokenizer, model: PreTrainedMode
             rewards: torch.Tensor = model(input_ids=torch.tensor(input_ids).to(model.device))['rm_logits']
         new_data = {
             "texts": [prompt+'<sep>'+answer for answer in answers],
-            "scores": rewards.tolist()
+            "scores": rewards.flatten().tolist()
         }
         print_rank_0(new_data)
         new_dataset.append(new_data)
@@ -152,7 +152,7 @@ def main(args):
                 generation_config = GenerationConfig.from_pretrained(args.model_path, do_sample=True, max_new_tokens=args.max_new_tokens)
                 llm_inference(tokenizer, model, generation_config, sub_dataset, args)
             elif args.task_type == 'reward_model_inference':
-                reward_model_inference(tokenizer, model, dataset, args)
+                reward_model_inference(tokenizer, model, sub_dataset, args)
 
 
 
