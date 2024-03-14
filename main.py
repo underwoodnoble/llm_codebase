@@ -27,18 +27,13 @@ def main():
     print_rank_0(model)
 
     if args.training_type == 'lora':
-        from peft import get_peft_model, LoraConfig, TaskType
-        if args.task_type in ['classification', 'reward']:
-            task_type = TaskType.SEQ_CLS
-        peft_config = LoraConfig(
-            task_type=task_type,
-            inference_mode=False,
-            r=args.lora_rank,
-            lora_alpha=args.lora_alpha,
-            lora_dropout=args.lora_dropout
-        )
+        from peft import get_peft_model
+        from src.arguments.utils import load_lora_config_for_json
+        peft_config = load_lora_config_for_json(args)
         model = get_peft_model(model, peft_config)
+        print_rank_0(">>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>")
         model.print_trainable_parameters()
+        print_rank_0(">>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>")
 
     if args.task_type == 'reward':
         from src.trainers import RewardModelTrainer
