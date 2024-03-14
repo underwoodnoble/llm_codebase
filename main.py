@@ -26,10 +26,10 @@ def main():
     print_rank_0(">"*10 + "model")
     print_rank_0(model)
 
-    if args.training_type == 'lora':
+    if args.training_type in ['lora', 'p-tuning']:
         from peft import get_peft_model
-        from src.arguments.utils import load_lora_config_for_json
-        peft_config = load_lora_config_for_json(args)
+        from src.arguments.utils import load_peft_config_from_json
+        peft_config = load_peft_config_from_json(args)
         model = get_peft_model(model, peft_config)
         print_rank_0(">>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>")
         model.print_trainable_parameters()

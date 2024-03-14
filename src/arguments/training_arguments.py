@@ -56,8 +56,7 @@ class TrainingArguments(transformers.TrainingArguments):
     evaluate_at_beginning: Optional[bool] = field(default=True, metadata={"help": "Whether evaluate at the beginning."})
     save_training_states: Optional[bool] = field(default=False, metadata={"help": "Whether or not save training states."})
     training_type: Optional[str] = field(default='full')
-    ## Lora arguments
-    lora_config_path: Optional[str] = field(default=None)
+    peft_config_path: Optional[str] = field(default=None)
 
     ## Reward model training arguments
     add_lm_loss: Optional[bool] = field(default=True, metadata={"help": "add language model loss when training reward model"})

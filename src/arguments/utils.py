@@ -1,11 +1,14 @@
 import json
 from .training_arguments import TrainingArguments
 
-def load_lora_config_for_json(args: TrainingArguments):
-    from peft import LoraConfig, TaskType
+def load_peft_config_from_json(args: TrainingArguments):
+    from peft import LoraConfig, PromptEncoderConfig
 
-    if args.lora_config_path is None:
+    if args.peft_config_path is None:
         raise ValueError("You mush set lora_config_path in TrainingArguments if your training_type is lora.")
-    with open(args.lora_config_path, 'r') as f:
+    with open(args.peft_config_path, 'r') as f:
         config = json.load(f)
-    return LoraConfig(**config)
+    if args.training_type == 'lora':
+        return LoraConfig(**config)
+    else:
+        return PromptEncoderConfig(**config)
