@@ -2,6 +2,8 @@ from src.arguments import TrainingArguments
 from transformers import HfArgumentParser
 from src.utils import print_rank_0, getDataset, loadTokenizerAndModel
 from typing import Dict
+import os
+import json
 
 
 def main():
@@ -23,6 +25,20 @@ def main():
     print_rank_0(tokenizer)
     print_rank_0(">"*10 + "model")
     print_rank_0(model)
+
+    if args.training_type == 'lora':
+        from peft import get_peft_model, LoraConfig, TaskType
+        if args.task_type in ['classification', 'reward']:
+            task_type = TaskType.SEQ_CLS
+        peft_config = LoraConfig(
+            task_type=task_type,
+            inference_mode=False,
+            r=args.lora_rank,
+            lora_alpha=args.lora_alpha,
+            lora_dropout=args.lora_dropout
+        )
+        model = get_peft_model(model, peft_config)
+        model.print_trainable_parameters()
 
     if args.task_type == 'reward':
         from src.trainers import RewardModelTrainer
@@ -160,6 +176,8 @@ def main():
             eval_result = trainer.evaluate()
         print_rank_0(eval_result)
         trainer.log_metrics('eval', eval_result)
+        with open(os.path.join(args.output_dir, 'final_results.json'), 'w') as f:
+            json.dump(eval_result, f)
 
 if __name__ == '__main__':
     main()

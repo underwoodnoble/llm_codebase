@@ -55,6 +55,11 @@ class TrainingArguments(transformers.TrainingArguments):
     pad_labels_with_ignore: Optional[bool] = field(default=False, metadata={"help": "Whether use ignore token to pad labels."})
     evaluate_at_beginning: Optional[bool] = field(default=True, metadata={"help": "Whether evaluate at the beginning."})
     save_training_states: Optional[bool] = field(default=False, metadata={"help": "Whether or not save training states."})
+    training_type: Optional[str] = field(default='full')
+    ## Lora arguments
+    lora_rank: Optional[int] = field(default=8)
+    lora_alpha: Optional[int]= field(default=32)
+    lora_dropout: Optional[float] = field(default=0.1)
 
     ## Reward model training arguments
     add_lm_loss: Optional[bool] = field(default=True, metadata={"help": "add language model loss when training reward model"})
@@ -103,3 +108,7 @@ class TrainingArguments(transformers.TrainingArguments):
             raise ValueError(f"Invalid model type. Expected one of {valid_model_types}, but got {self.model_type}.")
         if self.model_name_or_path is None:
             raise ValueError(f"model_name_or_path must be assigned.")
+
+        valid_training_type = ['full', 'lora', 'p-tuning']
+        if self.training_type not in valid_training_type:
+            raise ValueError(f"Invalid training_type. Expected one of {valid_training_type}, but got {self.training_type}")
