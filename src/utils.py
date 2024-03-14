@@ -22,9 +22,9 @@ def is_main_process():
         return True
 
 
-def print_rank_0(message) -> None:
+def print_rank_0(message, end='\n') -> None:
     if is_main_process():
-        print(message, flush=True)
+        print(message, flush=True, end=end)
 
 
 def read_json_or_jsonl_data(data_path: str) -> List:
