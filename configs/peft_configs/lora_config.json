@@ -1,4 +1,5 @@
 {
+    "task_type": "SEQ_CLS",
     "inference_mode": false,
     "r": 8,
     "lora_alpha": 32,
