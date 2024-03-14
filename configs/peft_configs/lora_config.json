@@ -1,0 +1,6 @@
+{
+    "inference_mode": false,
+    "r": 8,
+    "lora_alpha": 32,
+    "lora_dropout": 0.1
+}
