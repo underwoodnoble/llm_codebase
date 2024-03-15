@@ -6,6 +6,7 @@ This repository is a framework for beginners to dive into llm training, inferenc
 ### Training
 * Supported task：Classification, Reward Model Training, Supervised Finetuning, Rejection Sampling, Weighted Learning, RRHF, DPO, KTO
 * Supported model: bert, llama
+* Supported training type: Full parameter training, Parameter efficient training
 
 | Model | Supported training method |
 | --- | --- | 
@@ -22,19 +23,22 @@ This repository is a framework for beginners to dive into llm training, inferenc
     * PPL: llama
 
 ## Installation
-For most of the tasks, use the following command to install the required packages.
+First, you should use the following command to clone the repository.
 ```bash
 git clone https://github.com/underwoodnoble/llm_codebase.git
 cd llm_codebase
+```
+For most of the tasks, use the following command to install the required packages.
+```bash
 pip install -r requirements/normal.txt
 ```
 For DPO, use the following command to install the required packages.
 ```bash
 pip install -r requirements/dpo.txt
 ```
-For llama1, use the following command to install the required packages.
+For llama1 reward model, use the following command to install the required packages.
 ```bash
-pip install -r requirements/llama1.txt
+pip install -r requirements/llama_rm.txt
 ```
 ## Classification
 
@@ -46,10 +50,20 @@ Supported Models: Bert, Llama
 
 Under the hood, the classification head is a linear layer on top of the model output. This repository uses transformers AutoModelForSequenceClassification to train a classification model. The following code shows how to train a classification model with a classification head.
 
-Specific Arguments
+**Specific Arguments**
 * cls_data_text_name: field name of the text in data.
 * cls_data_label_name: field name of the label in data.
 * cls_data_label_nums: number of classes.
+
+**Data Format**
+```json
+{
+    "text": text,
+    "label": label
+}
+```
+
+* You need to align parameter <font color='orange'><cls_data_text_name></font> with the field name of the text in data and <font color='orange'><cls_data_label_name></font> with the field name of the label in data.
 
 #### Bert
 ```bash
