@@ -6,6 +6,7 @@ import torch
 from argparse import ArgumentParser
 from src.utils import read_json_or_jsonl_data, print_rank_0
 from accelerate import PartialState
+from accelerate.utils import gather_object
 
 
 def load_dataset(args):
@@ -16,6 +17,7 @@ def load_dataset(args):
         for i, data in enumerate(data_list):
             data['id'] = i
     return data_list
+
 
 def hh_to_dialog(text: str):
     temps = [t.split('\n\nAssistant: ') for t in text.split('\n\nHuman: ') if len(t) > 0]
@@ -33,6 +35,7 @@ def hh_to_dialog(text: str):
         else:
             role = 'user'
     return dialog
+
 
 def dialog_to_llama_tokens(tokenizer: LlamaTokenizer, dialog: List[Dict[str, str]]):
     B_SYS, E_SYS = "<<SYS>>\n", "\n<</SYS>>\n\n"
@@ -111,10 +114,10 @@ def llm_inference(tokenizer: PreTrainedTokenizer, model: PreTrainedModel,
         new_data = {"id": data['id'], "prompt": prompt, "answer": answers}
         print_rank_0(new_data)
         new_dataset.append(new_data)
-    with open(args.save_path, 'a+') as f:
-        for data in new_dataset:
-            f.write(json.dumps(data, ensure_ascii=False) + '\n')
-            
+
+    return new_dataset
+
+
 def reward_model_inference(tokenzier: PreTrainedTokenizer, model: PreTrainedModel, 
                            dataset: List[Dict[str, str]], args):
     new_dataset = []
@@ -131,10 +134,9 @@ def reward_model_inference(tokenzier: PreTrainedTokenizer, model: PreTrainedMode
         }
         print_rank_0(new_data)
         new_dataset.append(new_data)
-    with open(args.save_path, 'a+') as f:
-        for new_data in new_dataset:
-            s = json.dumps(new_data, ensure_ascii=False)
-            f.write(s+'\n')
+
+    return new_dataset
+
 
 def main(args):
     distributed_state = PartialState()
@@ -150,10 +152,14 @@ def main(args):
         with distributed_state.split_between_processes(dataset[i:i+args.chunk_size]) as sub_dataset:
             if args.task_type == 'llm_inference':
                 generation_config = GenerationConfig.from_pretrained(args.model_path, do_sample=True, max_new_tokens=args.max_new_tokens)
-                llm_inference(tokenizer, model, generation_config, sub_dataset, args)
+                new_dataset = llm_inference(tokenizer, model, generation_config, sub_dataset, args)
             elif args.task_type == 'reward_model_inference':
-                reward_model_inference(tokenizer, model, sub_dataset, args)
-
+                new_dataset = reward_model_inference(tokenizer, model, sub_dataset, args)
+            new_dataset = gather_object(new_dataset)
+            if distributed_state.is_main_process:
+                with open(args.save_path, 'a+') as f:
+                    for data in new_dataset:
+                        f.write(json.dumps(data, ensure_ascii=False) + '\n')
 
 
 if __name__ == '__main__':
