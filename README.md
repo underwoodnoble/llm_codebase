@@ -58,8 +58,8 @@ Under the hood, the classification head is a linear layer on top of the model ou
 **Data Format**
 ```json
 {
-    "text": text,
-    "label": label
+    "text": "text",
+    "label": "label"
 }
 ```
 
