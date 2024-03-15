@@ -1,13 +1,13 @@
 REPO_DIR=repo_dir
-DATA_DIR=${REPO_DIR}/mydata/cls_data/daiyong
+DATA_DIR=data_dir
 MODEL_PATH=model_path
 OUTPUT_DIR=output_dir
 python3 ${REPO_DIR}/main.py \
     --task_type classification \
     --model_type bert \
     --do_train True \
-    --data_paths ${DATA_DIR}/es_favor_train_balanced.json \
-    --eval_data_paths ${DATA_DIR}/es_favor_test.json \
+    --data_paths ${DATA_DIR}/train.json \
+    --eval_data_paths ${DATA_DIR}/test.json \
     --cls_data_text_name text \
     --cls_data_label_name label \
     --cls_data_label_nums 3 \
