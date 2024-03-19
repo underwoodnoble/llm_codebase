@@ -151,7 +151,7 @@ def main(args):
     for i in range(0, len(dataset), args.chunk_size):
         with distributed_state.split_between_processes(dataset[i:i+args.chunk_size]) as sub_dataset:
             if args.task_type == 'llm_inference':
-                generation_config = GenerationConfig.from_pretrained(args.model_path, do_sample=True, max_new_tokens=args.max_new_tokens)
+                generation_config = GenerationConfig.from_pretrained(args.model_name_or_path, do_sample=True, max_new_tokens=args.max_new_tokens)
                 new_dataset = llm_inference(tokenizer, model, generation_config, sub_dataset, args)
             elif args.task_type == 'reward_model_inference':
                 new_dataset = reward_model_inference(tokenizer, model, sub_dataset, args)
