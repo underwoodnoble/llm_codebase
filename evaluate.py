@@ -24,6 +24,7 @@ def get_args():
     parser.add_argument('--batch_size', type=int, default=1)
     parser.add_argument('--cache_size', type=int, default=8)
     parser.add_argument('--model_max_length', type=int, default=512)
+    parser.add_argument('--num_of_examples', type=int, default=None)
 
     parser.add_argument('--ppl_outlier_gate', type=float, default=10000)
     parser.add_argument('--data_prompt_name', type=str, default='prompt')
@@ -99,7 +100,6 @@ def gpt_winer_evaluate(params):
         "answers": [response_A, response_B],
         "winer": winer
     }
-    print(data)
     return data
 
 

@@ -359,6 +359,8 @@ def getTestDataset(args) -> List[Dict[str, Any]]:
                 new_data_list.append(new_data)
             data_list = new_data_list
             
+    if args.num_of_examples is not None:
+        data_list = data_list[:args.num_of_examples]
     if args.debug_mode:
         data_list = data_list[:100]
     return data_list
