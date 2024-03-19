@@ -108,7 +108,7 @@ Supported Models: Bert, Llama
 bash scripts/bert_reward.sh
 ```
 ### Llama reward model
-For Llama1, we recommend to use the requirements/llama1.txt to install the required packages. Because we find that higher version of transformers may degrade the preformance of Llama1.
+For Llama1, we recommend to use the requirements/llama1.txt to install the required packages. Because we find that higher version of transformers may degrade the preformance of Llama1. And do not use bf16 to train llama reward model, this will degrade the performance too.
 
 ```bash
 # Install the required packages
