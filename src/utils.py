@@ -1,8 +1,7 @@
 import torch
 import json
 from tqdm import tqdm
-import transformers
-from transformers import (LlamaTokenizer, LlamaPreTrainedModel, BertForSequenceClassification, BertConfig, 
+from transformers import (LlamaTokenizer, BertForSequenceClassification, BertConfig, 
 BertTokenizer, AutoConfig, LlamaForCausalLM, AutoModelForSequenceClassification, AutoTokenizer, PreTrainedTokenizer,
 PreTrainedModel, AutoModelForCausalLM)
 from .models.RewardModel import LlamaRewardModel
@@ -55,7 +54,7 @@ def load_data_from_paths(data_paths: List[str]) -> List[Dict[str, Any]]:
     return total_data_list
 
     
-def set_special_tokens(tokenizer: LlamaTokenizer, model: LlamaPreTrainedModel) -> None:
+def set_special_tokens(tokenizer: PreTrainedTokenizer, model: PreTrainedModel) -> None:
     DEFAULT_PAD_TOKEN = "<pad>"
     DEFAULT_EOS_TOKEN = "</s>"
     DEFAULT_BOS_TOKEN = "<s>"
