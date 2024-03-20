@@ -6,26 +6,26 @@ from .test import compute_ece
 from torch.nn.functional import sigmoid
 
 
-def rm_calibration_errors(args, labels: torch.Tensor, probs: torch.Tensor, masks: torch.Tensor, num_bins):
-    label_list = labels.reshape(-1).tolist()
-    prob_list = probs.reshape(-1).tolist()
-    mask_list = masks.reshape(-1).tolist()
-
-    y_true, y_prob = [], []
-    for label, prob, mask in zip(label_list, prob_list, mask_list):
-        if mask:
-            y_true.append(label)
-            y_prob.append(prob)
-    
-    if args.debug_mode:
-        print_rank_0(f">>> Check calibration inputs mask filtered...")
-        print_rank_0(f">>>>>>>>> y_true: {y_true[:10]}")
-        print_rank_0(f">>>>>>>>> y_prob: {y_prob[:10]}")
-    
-    return compute_ece(np.array(y_true), np.array(y_prob), n_bins=num_bins)
-    
-
 def compute_reward_metrics(args, predict: EvalPrediction):
+    def rm_calibration_errors(args, labels: torch.Tensor, probs: torch.Tensor, masks: torch.Tensor, num_bins):
+        label_list = labels.reshape(-1).tolist()
+        prob_list = probs.reshape(-1).tolist()
+        mask_list = masks.reshape(-1).tolist()
+
+        y_true, y_prob = [], []
+        for label, prob, mask in zip(label_list, prob_list, mask_list):
+            if mask:
+                y_true.append(label)
+                y_prob.append(prob)
+        
+        if args.debug_mode:
+            print_rank_0(f">>> Check calibration inputs mask filtered...")
+            print_rank_0(f">>>>>>>>> y_true: {y_true[:10]}")
+            print_rank_0(f">>>>>>>>> y_prob: {y_prob[:10]}")
+        
+        return compute_ece(np.array(y_true), np.array(y_prob), n_bins=num_bins)
+
+
     logits = torch.from_numpy(predict.predictions) # (batch_size, num_sample)
     scores = torch.from_numpy(predict.label_ids) # (batch_size, num_sample)
 
