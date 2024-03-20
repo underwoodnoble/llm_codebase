@@ -155,10 +155,14 @@ def main():
         from src.callbacks import EvaluateFirstStepCallback
         trainer.add_callback(EvaluateFirstStepCallback())
 
-    trainer.train()
-    if args.save_training_states:
-        trainer.save_state()
-    trainer.save_model(output_dir=args.output_dir)
+    if args.do_train:
+        train_result = trainer.train()
+        metrics = train_result.metrics
+        if args.save_training_states:
+            trainer.save_state()
+        trainer.save_model(output_dir=args.output_dir)
+        trainer.log_metrics("train", metrics)
+        trainer.save_metrics("train", metrics)
 
     print_rank_0(">>>>>> Final evaluation:")
     if eval_dataset is not None:
