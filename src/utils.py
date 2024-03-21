@@ -2,11 +2,11 @@ import torch
 import json
 from tqdm import tqdm
 from transformers import (LlamaTokenizer, BertForSequenceClassification, BertConfig, PretrainedConfig,
-BertTokenizer, AutoConfig, LlamaForCausalLM, LlamaConfig, AutoModelForSequenceClassification, AutoTokenizer, PreTrainedTokenizer,
-PreTrainedModel, AutoModelForCausalLM)
+BertTokenizer, LlamaForCausalLM, LlamaConfig, PreTrainedTokenizer,
+PreTrainedModel, LlamaForSequenceClassification)
 from .models.RewardModel import LlamaRewardModel, QwenRewardModel, BaichuanRewardModel
-from .models.BaseModel.Qwen import QWenConfig, QWenTokenizer
-from .models.BaseModel.Baichuan2 import BaichuanConfig, BaichuanTokenizer
+from .models.BaseModel.Qwen import QWenConfig, QWenTokenizer, QWenLMHeadModel
+from .models.BaseModel.Baichuan2 import BaichuanConfig, BaichuanTokenizer, BaichuanForCausalLM
 from .arguments import TrainingArguments
 import os
 from typing import List, Dict, Any, Optional, Tuple, Union
@@ -131,6 +131,7 @@ def dpo_transform(data_list: List[Dict[str, List]], args: TrainingArguments) -> 
 
     return new_data_list
 
+
 def data_transform(data_list: List[Dict[str, List]], args: TrainingArguments) -> List[Dict[str, Any]]:
     new_data_list = []
     if args.task_type in ['reward', "offline_rejection_sampling", "offline_RRHF", "DPO"]:
@@ -211,6 +212,7 @@ def data_transform(data_list: List[Dict[str, List]], args: TrainingArguments) ->
 
     return new_data_list
 
+
 def getDataset(args: TrainingArguments, type='train') -> Union[Dataset, Dict[str, Dataset]]:
     if type == 'train':
         if args.data_paths is None and args.data_dir is None:
@@ -250,37 +252,34 @@ def getDataset(args: TrainingArguments, type='train') -> Union[Dataset, Dict[str
 
 def loadTokenizerAndModel(args: TrainingArguments) -> Tuple[PreTrainedTokenizer, PreTrainedModel, Optional[PreTrainedModel]]:
     MODEL_CLASS_MAP: Dict[str, Dict[str, Dict[str, Union[PretrainedConfig, PreTrainedTokenizer, PreTrainedModel]]]] = {
-        "reward": {
-            "bert": {
-                "config": BertConfig,
-                "tokenizer": BertTokenizer,
-                "model": BertForSequenceClassification
-            },
-            "llama": {
-                "config": LlamaConfig,
-                "tokenizer": LlamaTokenizer,
-                "model": LlamaRewardModel
-            },
-            "qwen": {
-                "config": QWenConfig,
-                "tokenizer": QWenTokenizer,
-                "model": QwenRewardModel
-            },
-            "baichuan": {
-                "config": BaichuanConfig,
-                "tokenizer": BaichuanTokenizer,
-                "model": BaichuanRewardModel
-            }
+        "RM": {
+            "bert": {"config": BertConfig, "tokenizer": BertTokenizer, "model": BertForSequenceClassification},
+            "llama": {"config": LlamaConfig, "tokenizer": LlamaTokenizer, "model": LlamaRewardModel},
+            "qwen": {"config": QWenConfig, "tokenizer": QWenTokenizer, "model": QwenRewardModel},
+            "baichuan": {"config": BaichuanConfig, "tokenizer": BaichuanTokenizer, "model": BaichuanRewardModel}
+        },
+        "CausalLM": {
+            "llama": {"config": LlamaConfig, "tokenizer": LlamaTokenizer, "model": LlamaForCausalLM},
+            "qwen": {"config": QWenConfig, "tokenizer": QWenTokenizer, "model": QWenLMHeadModel},
+            "baichuan": {"config": BaichuanConfig, "tokenizer": BaichuanTokenizer, "model": BaichuanForCausalLM}
+        },
+        "Classification": {
+            "bert": {"config": BertConfig, "tokenizer": BertTokenizer, "model": BertForSequenceClassification},
+            "llama": {"config": LlamaConfig, "tokenizer": LlamaTokenizer, "model": LlamaForSequenceClassification}
         }
     }
-    if args.task_type == 'reward':
-        try:
-            CONFIG_CLASS, TOKENIZER_CLASS, MODEL_CLASS = MODEL_CLASS_MAP[args.task_type][args.model_type].values()
-        except:
-            raise ValueError(f"Do not support model type '{args.model_type}' for task type '{args.task_type}'")
+
+    def _load_config(CONFIG_CLASS: PretrainedConfig) -> PretrainedConfig:
         config = CONFIG_CLASS.from_pretrained(args.model_name_or_path)
-        if args.model_type == 'bert':
+        if args.task_type == 'reward' and args.model_type == 'bert':
             config.num_labels = 1
+        elif args.task_type == 'classification':
+            config.num_lables = args.cls_data_label_nums,
+            config.id2label = args.id2label
+            config.label2id = args.label2id       
+        return config
+
+    def _load_tokenizer(TOKENIZER_CLASS: PreTrainedTokenizer) -> PreTrainedTokenizer:
         if args.model_type == 'qwen':
             tokenizer = TOKENIZER_CLASS.from_pretrained(args.model_name_or_path,
                                                         truncation_side=args.truncation_side,
@@ -293,66 +292,38 @@ def loadTokenizerAndModel(args: TrainingArguments) -> Tuple[PreTrainedTokenizer,
                                                         truncation_side=args.truncation_side,
                                                         padding_side=args.padding_side,
                                                         trust_remote_code=True)
-        tokenizer.model_max_length = args.model_max_length
-        model = MODEL_CLASS.from_pretrained(args.model_name_or_path, config=config)
+        tokenizer.model_max_length = args.model_max_length       
+        return tokenizer
+
+    def _set_special_tokens(tokenizer: PreTrainedTokenizer, model: PreTrainedTokenizer):
         if args.model_type not in ['qwen', 'bert']:
             set_special_tokens(tokenizer, model)
         elif args.model_type == 'qwen':
             model.config.pad_token_id = tokenizer.pad_token_id
 
-
-    elif args.task_type in ['SFT', 'offline_rejection_sampling', "offline_RRHF", 'weighted_learning']:
-        if args.model_type == 'llama':
-            tokenizer = LlamaTokenizer.from_pretrained(args.model_name_or_path, truncation_side=args.truncation_side, padding_side=args.padding_side)
-            tokenizer.model_max_length = args.model_max_length
-            model = LlamaForCausalLM.from_pretrained(args.model_name_or_path)
-            if args.set_special_tokens:
-                set_special_tokens(tokenizer, model)
-            else:
-                if tokenizer.pad_token is None:
-                    tokenizer.pad_token_id = tokenizer.eos_token_id
-                    model.config.pad_token_id = tokenizer.eos_token_id
-
+    if args.task_type == 'reward':
+        TASKMAP = 'RM'
+    elif args.task_type in ['SFT', 'offline_rejection_sampling', 'offline_RRHF', 'weighted_learning', 'DPO', 'KTO']:
+        TASKMAP = 'CausalLM'
     elif args.task_type == 'classification':
-        config = AutoConfig.from_pretrained(args.model_name_or_path)
-        config.num_labels = args.cls_data_label_nums
-        config.id2label = args.id2label
-        config.label2id = args.label2id
-        tokenizer = AutoTokenizer.from_pretrained(args.model_name_or_path, truncation_side=args.truncation_side, padding_side=args.padding_side, trust_remote_code=True)
-        tokenizer.model_max_length = args.model_max_length
-        model = AutoModelForSequenceClassification.from_pretrained(args.model_name_or_path, config=config)
-        if args.model_type == 'llama':
-            if args.set_special_tokens:
-                set_special_tokens(tokenizer, model)
-            else:
-                tokenizer.pad_token_id = 0
-                model.config.pad_token_id = 0
+        TASKMAP = 'Classification'
 
-    elif args.task_type in ['DPO', 'KTO']:
-        if args.model_type == 'llama':
-            tokenizer = LlamaTokenizer.from_pretrained(args.model_name_or_path, truncation_side=args.truncation_side, padding_side=args.padding_side)
-            tokenizer.model_max_length = args.model_max_length
-            model = LlamaForCausalLM.from_pretrained(args.model_name_or_path)
-            ref_tokenizer = LlamaTokenizer.from_pretrained(args.model_name_or_path, truncation_side=args.truncation_side, padding_side=args.padding_side)
-            ref_model = LlamaForCausalLM.from_pretrained(args.model_name_or_path)
-        elif args.model_type == 'other':
-            tokenizer = AutoTokenizer.from_pretrained(args.model_name_or_path, truncation_side=args.truncation_side, padding_side=args.padding_side, trust_remote_code=True)
-            tokenizer.model_max_length = args.model_max_length
-            model = AutoModelForCausalLM.from_pretrained(args.model_name_or_path, trust_remote_code=True)
-            ref_tokenizer = AutoTokenizer.from_pretrained(args.model_name_or_path, truncation_side=args.truncation_side, padding_side=args.padding_side, trust_remote_code=True)
-            ref_model = AutoModelForCausalLM.from_pretrained(args.model_name_or_path, trust_remote_code=True)
+    try:
+        CONFIG_CLASS, TOKENIZER_CLASS, MODEL_CLASS = MODEL_CLASS_MAP[TASKMAP][args.model_type].values()
+    except:
+        raise ValueError(f"Do not support model type '{args.model_type}' for task type '{args.task_type}'")
 
-        if args.set_special_tokens:
-            set_special_tokens(tokenizer, model)       
-            set_special_tokens(ref_tokenizer, ref_model)
-        else:
-            tokenizer.pad_token_id = 0
-            model.config.pad_token_id = 0
-            ref_model.config.pad_token_id = 0
-
-        return tokenizer, model, ref_model
+    config = _load_config(CONFIG_CLASS)
+    tokenizer = _load_tokenizer(TOKENIZER_CLASS)
+    model = MODEL_CLASS.from_pretrained(args.model_name_or_path, config=config)
+    _set_special_tokens(tokenizer, model)
+    ref_model = None
+    if args.task_type in ['DPO', 'KTO']:
+        ref_tokenizer = _load_tokenizer(TOKENIZER_CLASS)
+        ref_model = MODEL_CLASS.from_pretrained(args.model_name_or_path, config=config)
+        _set_special_tokens(ref_tokenizer, ref_model)
     
-    return tokenizer, model, None
+    return tokenizer, model, ref_model
 
 
 def getTestDataset(args) -> List[Dict[str, Any]]:
