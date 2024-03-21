@@ -42,7 +42,9 @@ class LlamaRewardModel(LlamaPreTrainedModel):
         output_hidden_states: Optional[bool] = None,
         return_dict: Optional[bool] = None
     ) -> Union[Tuple, RewardModelOutput]:
-        output_attentions = output_attentions if output_attentions is not None else self.config.output_attentions
+        output_attentions = (
+            output_attentions if output_attentions is not None else self.config.output_attentions
+        )
         output_hidden_states = (
             output_hidden_states if output_hidden_states is not None else self.config.output_hidden_states
         )
@@ -97,13 +99,17 @@ class LlamaRewardModel(LlamaPreTrainedModel):
         else:
             raise ValueError(f"The pooling method {pooling_type} is not implemented.")
         
-        pooled_logits = self.reward_head(pooled_hidden_state)
+        pooled_logits = self.rm_head(pooled_hidden_state)
+
+        ret = {
+            "last_hidden_state": last_hidden_state,
+            "hidden_states": transformer_outputs.hidden_states if output_hidden_states else None,
+            "attentions": transformer_outputs.attentions if output_attentions else None,
+            "lm_logits": lm_logits,
+            "rm_logits": pooled_logits,
+            "rm_embedding": pooled_hidden_state
+        }
 
         if not return_dict:
-            return tuple(v for v in [lm_logits, pooled_logits, last_hidden_state, pooled_hidden_state] if v is not None)
-        return RewardModelOutput(
-            lm_logits=lm_logits,
-            rm_logits=pooled_logits,
-            last_hidden_states=last_hidden_state,
-            rm_embeddings=pooled_hidden_state
-        )
+            return tuple(v for v in ret.values() if v is not None)
+        return RewardModelOutput(**ret)
