@@ -100,7 +100,7 @@ class TrainingArguments(transformers.TrainingArguments):
         if self.eval_dataset_merge_mode not in ['separate', 'merge', 'both']:
             raise ValueError(f"Ivalid eval_dataset_merge_mode, Expected one of ['separate', 'merge', 'both'], bug got {self.eval_dataset_merge_mode}")
 
-        valid_model_types = ['bert', 'llama', 'baichuan', 'other']
+        valid_model_types = ['bert', 'llama', 'baichuan', 'qwen', 'other']
         if self.model_type not in valid_model_types:
             raise ValueError(f"Invalid model type. Expected one of {valid_model_types}, but got {self.model_type}.")
         if self.model_name_or_path is None:
