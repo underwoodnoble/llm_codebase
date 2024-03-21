@@ -1,47 +1,49 @@
-from transformers import LlamaModel, LlamaPreTrainedModel, LlamaConfig
-from torch import nn
-import torch
-from typing import Optional, List, Union, Tuple
+from ..BaseModel.Baichuan2 import BaichuanConfig, BaichuanPreTrainedModel, BaichuanModel
 from ..utils import RewardModelOutput
+import torch
+from torch import nn
+from typing import Optional, List
 
 
-class LlamaRewardModel(LlamaPreTrainedModel):
-    def __init__(self, config: LlamaConfig):
+class BaichuanRewardModel(BaichuanPreTrainedModel):
+    def __init__(self, config: BaichuanConfig):
         super().__init__(config)
-        self.model = LlamaModel(config)
-        self.reward_head = nn.Linear(config.hidden_size, 1, bias=False)
-        self.lm_head = nn.Linear(config.hidden_size, config.vocab_size, bias=False)
-
-        # Initialize weights and apply final processing
+        self.model = BaichuanModel(config)
+        self.rm_head = nn.Linear(config.hidden_size, 1)
+        self.lm_head = nn.Linear(config.hidden_size, config.vocab_size)
         self.post_init()
     
-    def get_input_embeddings(self):
-        return self.model.embed_tokens
+
+    def get_input_embeddings(self) -> nn.Module:
+        return self.model.get_input_embeddings()
+
+
+    def set_input_embeddings(self, value: nn.Module):
+        return self.model.set_input_embeddings(value)
+
+
+    def get_output_embeddings(self) -> nn.Module:
+        return self.model.get_output_embeddings()
+
+
+    def set_output_embeddings(self, value:nn.Module):
+        self.lm_head = value
     
-    def set_input_embeddings(self, value):
-        self.model.embed_tokens = value
 
-    def get_output_embeddings(self):
-        return self.lm_head
-
-    def set_output_embeddings(self, new_embeddings):
-        self.lm_head = new_embeddings
-
-    def forward(
-        self,
-        input_ids: torch.LongTensor = None,
-        attention_mask: Optional[torch.Tensor] = None,
-        position_ids: Optional[torch.LongTensor] = None,
-        past_key_values: Optional[List[torch.FloatTensor]] = None,
-        inputs_embeds: Optional[torch.FloatTensor] = None,
-        labels: Optional[torch.LongTensor] = None,
-        pooling_type: str = "last",
-        padding_side: str = "right",
-        use_cache: Optional[bool] = None,
-        output_attentions: Optional[bool] = None,
-        output_hidden_states: Optional[bool] = None,
-        return_dict: Optional[bool] = None
-    ) -> Union[Tuple, RewardModelOutput]:
+    def forward(self,
+                input_ids: Optional[torch.Tensor],
+                attention_mask: Optional[torch.Tensor] = None,
+                position_ids: Optional[torch.LongTensor] = None,
+                past_key_values: Optional[List[torch.FloatTensor]] = None,
+                inputs_embeds: Optional[torch.FloatTensor] = None,
+                labels: Optional[torch.LongTensor] = None,
+                pooling_type: str = "last",
+                padding_side: str = "right",
+                use_cache: Optional[bool] = None,
+                output_attentions: Optional[bool] = None,
+                output_hidden_states: Optional[bool] = None,
+                return_dict: Optional[bool] = None
+                ) -> RewardModelOutput:
         output_attentions = output_attentions if output_attentions is not None else self.config.output_attentions
         output_hidden_states = (
             output_hidden_states if output_hidden_states is not None else self.config.output_hidden_states
@@ -97,7 +99,7 @@ class LlamaRewardModel(LlamaPreTrainedModel):
         else:
             raise ValueError(f"The pooling method {pooling_type} is not implemented.")
         
-        pooled_logits = self.reward_head(pooled_hidden_state)
+        pooled_logits = self.rm_head(pooled_hidden_state)
 
         if not return_dict:
             return tuple(v for v in [lm_logits, pooled_logits, last_hidden_state, pooled_hidden_state] if v is not None)
@@ -105,5 +107,4 @@ class LlamaRewardModel(LlamaPreTrainedModel):
             lm_logits=lm_logits,
             rm_logits=pooled_logits,
             last_hidden_states=last_hidden_state,
-            rm_embeddings=pooled_hidden_state
-        )
+            rm_embeddings=pooled_hidden_state)
