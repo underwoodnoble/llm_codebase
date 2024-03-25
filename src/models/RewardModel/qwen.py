@@ -8,23 +8,23 @@ from ..utils import RewardModelOutput
 class QwenRewardModel(QWenPreTrainedModel):
     def __init__(self, config: QWenConfig):
         super().__init__(config)
-        self.model = QWenModel(config)
-        self.rm_head = nn.Linear(config.hidden_size, 1)
-        self.lm_head = nn.Linear(config.hidden_size, config.vocab_size)
+        self.transformer = QWenModel(config)
+        self.rm_head = nn.Linear(config.hidden_size, 1, bias=False)
+        self.lm_head = nn.Linear(config.hidden_size, config.vocab_size, bias=False)
 
         self.post_init()
 
 
     def get_input_embeddings(self) -> nn.Module:
-        return self.model.get_input_embeddings()
+        return self.transformer.get_input_embeddings()
 
 
     def set_input_embeddings(self, value: nn.Module):
-        return self.model.set_input_embeddings(value)
+        return self.transformer.set_input_embeddings(value)
 
 
     def get_output_embeddings(self) -> nn.Module:
-        return self.model.get_output_embeddings()
+        return self.transformer.get_output_embeddings()
 
 
     def set_output_embeddings(self, value:nn.Module):
@@ -55,7 +55,7 @@ class QwenRewardModel(QWenPreTrainedModel):
 
         return_dict = return_dict if return_dict is not None else self.config.use_return_dict
 
-        transformer_outputs = self.model(
+        transformer_outputs = self.transformer(
             input_ids,
             attention_mask=attention_mask,
             position_ids=position_ids,
@@ -110,7 +110,7 @@ class QwenRewardModel(QWenPreTrainedModel):
             "attentions": transformer_outputs.attentions if output_attentions else None,
             "lm_logits": lm_logits,
             "rm_logits": pooled_logits,
-            "rm_embedding": pooled_hidden_state
+            "rm_embeddings": pooled_hidden_state
         }
 
         if not return_dict:

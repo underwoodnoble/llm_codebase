@@ -107,7 +107,7 @@ class LlamaRewardModel(LlamaPreTrainedModel):
             "attentions": transformer_outputs.attentions if output_attentions else None,
             "lm_logits": lm_logits,
             "rm_logits": pooled_logits,
-            "rm_embedding": pooled_hidden_state
+            "rm_embeddings": pooled_hidden_state
         }
 
         if not return_dict:

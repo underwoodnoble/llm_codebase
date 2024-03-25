@@ -9,8 +9,8 @@ class BaichuanRewardModel(BaichuanPreTrainedModel):
     def __init__(self, config: BaichuanConfig):
         super().__init__(config)
         self.model = BaichuanModel(config)
-        self.rm_head = nn.Linear(config.hidden_size, 1)
-        self.lm_head = nn.Linear(config.hidden_size, config.vocab_size)
+        self.rm_head = nn.Linear(config.hidden_size, 1, bias=False)
+        self.lm_head = nn.Linear(config.hidden_size, config.vocab_size, bias=False)
         self.post_init()
     
 
@@ -109,7 +109,7 @@ class BaichuanRewardModel(BaichuanPreTrainedModel):
             "attentions": transformer_outputs.attentions if output_attentions else None,
             "lm_logits": lm_logits,
             "rm_logits": pooled_logits,
-            "rm_embedding": pooled_hidden_state
+            "rm_embeddings": pooled_hidden_state
         }
 
         if not return_dict:
