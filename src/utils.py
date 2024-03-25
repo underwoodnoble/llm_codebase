@@ -28,6 +28,12 @@ def print_rank_0(message, end='\n') -> None:
         print(message, flush=True, end=end)
 
 
+def print_object_on_main_process(name: str, obj: object):
+    print_rank_0(">"*30 + name)
+    print_rank_0(obj)
+    print_rank_0(">"*30)
+
+
 def read_json_or_jsonl_data(data_path: str) -> List:
     if data_path.endswith('json'):
         with open(data_path, 'r') as f:
