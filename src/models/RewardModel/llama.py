@@ -9,7 +9,7 @@ class LlamaRewardModel(LlamaPreTrainedModel):
     def __init__(self, config: LlamaConfig):
         super().__init__(config)
         self.model = LlamaModel(config)
-        self.reward_head = nn.Linear(config.hidden_size, 1, bias=False)
+        self.rm_head = nn.Linear(config.hidden_size, 1, bias=False)
         self.lm_head = nn.Linear(config.hidden_size, config.vocab_size, bias=False)
 
         # Initialize weights and apply final processing
