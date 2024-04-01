@@ -1,6 +1,6 @@
 from src.arguments import TrainingArguments
 from transformers import HfArgumentParser
-from src.utils import print_rank_0, getDataset, loadTokenizerAndModel
+from src.utils import print_object_on_main_process, print_rank_0, getDataset, loadTokenizerAndModel
 from typing import Dict
 import os
 import json
@@ -9,22 +9,18 @@ import json
 def main():
     parser = HfArgumentParser((TrainingArguments,))
     args: TrainingArguments = parser.parse_args_into_dataclasses()[0]
-    print_rank_0(args)
+    print_object_on_main_process("Arguments", args)
 
     print_rank_0("Loading data>>>>>>>>>>>>>>>>>>>>>>>>>>>")
     if args.do_train:
         train_dataset = getDataset(args, type='train')
     eval_dataset = getDataset(args, type='eval')
-    print_rank_0(">"*10 + "training set")
-    print_rank_0(train_dataset)
-    print_rank_0(">"*10 + "evaluation set")
-    print_rank_0(eval_dataset)
+    print_object_on_main_process("training set", train_dataset, split_line_color="green", object_color="cyan")
+    print_object_on_main_process("evaluation set", eval_dataset, split_line_color="green", object_color="cyan")
 
     tokenizer, model, ref_model = loadTokenizerAndModel(args)
-    print_rank_0(">"*10 + "tokenizer")
-    print_rank_0(tokenizer)
-    print_rank_0(">"*10 + "model")
-    print_rank_0(model)
+    print_object_on_main_process("tokenizer", tokenizer, split_line_color="green", object_color="cyan")
+    print_object_on_main_process("model", model, split_line_color="green", object_color="cyan")
 
     if args.training_type in ['lora', 'p-tuning']:
         from peft import get_peft_model
@@ -151,7 +147,7 @@ def main():
         )
         
 
-    if args.evaluate_at_beginning and eval_dataset is not None:
+    if args.evaluate_at_the_beginning and eval_dataset is not None:
         from src.callbacks import EvaluateFirstStepCallback
         trainer.add_callback(EvaluateFirstStepCallback())
 

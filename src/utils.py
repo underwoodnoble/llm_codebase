@@ -23,15 +23,31 @@ def is_main_process():
         return True
 
 
-def print_rank_0(message, end='\n') -> None:
+def print_rank_0(message, end='\n', color='green') -> None:
+    if color == 'default':
+        prefix = "\033[38m"
+    elif color == 'red':
+        prefix = "\033[31m"
+    elif color == 'green':
+        prefix = "\033[32m"
+    elif color == 'yellow':
+        prefix = "\033[33m"
+    elif color == 'blue':
+        prefix = "\033[34m"
+    elif color == 'pink':
+        prefix = "\033[35m"
+    elif color == 'cyan':
+        prefix = "\033[36m"
+
+    postfix="\033[0m"
     if is_main_process():
-        print(message, flush=True, end=end)
+        print(prefix + repr(message) + postfix, flush=True, end=end)
 
 
-def print_object_on_main_process(name: str, obj: object):
-    print_rank_0(">"*30 + name)
-    print_rank_0(obj)
-    print_rank_0(">"*30)
+def print_object_on_main_process(name: str, obj: object, split_line_color="yellow", object_color="pink") -> None:
+    print_rank_0(">"*30 + name, color=split_line_color)
+    print_rank_0(obj, color=object_color)
+    print_rank_0(">"*30, color=split_line_color)
 
 
 def read_json_or_jsonl_data(data_path: str) -> List:
