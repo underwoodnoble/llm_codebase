@@ -33,7 +33,7 @@ def main():
 
     if args.task_type == 'reward':
         from src.trainers import RewardModelTrainer
-        from src.collator import reward_data_collator
+        from src.collator import reward_data_collactor
         from src.metrics import compute_reward_metrics
         trainer = RewardModelTrainer(
             model=model,
@@ -41,31 +41,31 @@ def main():
             args=args,
             train_dataset=train_dataset,
             eval_dataset=eval_dataset,
-            data_collator=reward_data_collator(tokenizer, args),
+            data_collator=reward_data_collactor(tokenizer, args),
             compute_metrics=lambda x: compute_reward_metrics(args, x)
             )
     elif args.task_type in ['sft', 'offline_rejection_sampling', 'classification']:
         from transformers import Trainer
         if args.task_type == 'sft':
-            from src.collator import sft_data_collator
+            from src.collator import sft_data_collactor
 
             print_rank_0("Using sft data collator")
-            data_collator = sft_data_collator(tokenizer, args)
+            data_collator = sft_data_collactor(tokenizer, args)
             compute_metrics = None
 
         elif args.task_type == 'offline_rejection_sampling':
-            from src.collator import rjs_data_collator
+            from src.collator import rjs_data_collactor
 
             print_rank_0("Using rejection sampling data collator")
-            data_collator = rjs_data_collator(tokenizer, args)
+            data_collator = rjs_data_collactor(tokenizer, args)
             compute_metrics = None
         
         elif args.task_type == 'classification':
-            from src.collator import classfication_data_collator
+            from src.collator import classfication_data_collactor
             from src.metrics import compute_classification_metrics
 
             print_rank_0("Using classification data collator")
-            data_collator = classfication_data_collator(tokenizer, args)
+            data_collator = classfication_data_collactor(tokenizer, args)
             compute_metrics = compute_classification_metrics
 
         trainer = Trainer(
@@ -80,10 +80,10 @@ def main():
 
     elif args.task_type == 'weighted_learning':
         from src.trainers import WeightedTrainer
-        from src.collator import weighted_data_collator
+        from src.collator import weighted_data_collactor
 
         print_rank_0("Using weighted learning data collator")
-        data_collator = weighted_data_collator(tokenizer, args)
+        data_collator = weighted_data_collactor(tokenizer, args)
 
         trainer = WeightedTrainer(
             model=model,
@@ -95,11 +95,11 @@ def main():
         )
 
     elif args.task_type == 'offline_RRHF':
-        from src.collator import rrhf_data_collator
+        from src.collator import rrhf_data_collactor
         from src.trainers import RRHFTrainer
 
         print_rank_0("Using offline RRHF data collator")
-        data_collator = rrhf_data_collator(tokenizer, args)
+        data_collator = rrhf_data_collactor(tokenizer, args)
         trainer = RRHFTrainer(
             model=model,
             args=args,
@@ -128,10 +128,10 @@ def main():
         )
     
     elif args.task_type == 'KTO':
-        from src.collator import kto_data_collator
+        from src.collator import kto_data_collactor
         from src.trainers import KTOTrainer
         print_rank_0("Using KTO data collator")
-        data_collator = kto_data_collator(tokenizer, args, train_dataset)
+        data_collator = kto_data_collactor(tokenizer, args, train_dataset)
         
         model.ref_model = ref_model
         for param in model.ref_model.parameters():
