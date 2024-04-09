@@ -4,6 +4,7 @@ from transformers import PreTrainedTokenizer, PreTrainedModel
 from typing import List, Dict
 from copy import deepcopy
 from torch.nn.utils.rnn import pad_sequence
+import torch.nn.functional as F
 from .utils import print_rank_0
 from .models.utils import RefModel
 from datasets import Dataset
@@ -22,28 +23,32 @@ def _llm_tokenize(prompts: List[str], texts: List[str], tokenizer: PreTrainedTok
         for prompt, text in zip(prompts, texts):
             prompt_ids = tokenizer.encode(prompt, add_special_tokens=False)
             text_ids = tokenizer.encode(text, add_special_tokens=False)
-            label = deepcopy(text_ids)
             response_start_idx = len(prompt_ids)
             if prompt_ids != text_ids[:response_start_idx]:
                 response_start_idx -= 1
                 prompt_ids = text_ids[:response_start_idx]
-            text_ids = [tokenizer.bos_token_id] + text_ids + [tokenizer.eos_token_id]
-            label = [tokenizer.bos_token_id] + label + [tokenizer.eos_token_id]
+            if args.add_special_tokens:
+                text_ids = [tokenizer.bos_token_id] + text_ids + [tokenizer.eos_token_id]
+            if len(text_ids) > args.model_max_length:
+                text_ids = text_ids[-args.model_max_length:]
+            label = deepcopy(text_ids)
             if args.only_predict_answer:
-                label[:len(prompt_ids) + 1] = [args.ignore_token_id] * (len(prompt_ids) + 1)
+                label[:len(prompt_ids) + 1] = [-100] * (len(prompt_ids) + 1)
 
             input_ids.append(torch.tensor(text_ids[-args.model_max_length:]))
             labels.append(torch.tensor(label[-args.model_max_length:]))
         
         input_ids = pad_sequence(input_ids, batch_first=True, padding_value=tokenizer.pad_token_id)
         if args.pad_labels_with_ignore:
-            labels = pad_sequence(labels, batch_first=True, padding_value=args.ignore_token_id)
+            labels = pad_sequence(labels, batch_first=True, padding_value=-100)
         else:
             labels = pad_sequence(labels, batch_first=True, padding_value=tokenizer.pad_token_id)
-        
-        if input_ids.shape[-1] > tokenizer.model_max_length:
-            input_ids = input_ids[:, :, -tokenizer.model_max_length:]
-            labels = labels[:, :, -tokenizer.model_max_length]
+
+        if args.debug_mode: # If debug_model is True, then pad the sequence into the max token length.
+            input_ids = F.pad(input_ids, (0, tokenizer.model_max_length - input_ids.shape[0]), mode='constant', value=tokenizer.pad_token_id)
+            labels = F.pad(labels, (0, tokenizer.model_max_length - input_ids.shape[0]), mode='constant', value=args.ignore_token_id 
+                        if args.pad_labels_with_ignore else tokenizer.pad_token_id)
+
         attention_mask = torch.ne(input_ids, tokenizer.pad_token_id)
 
     return {
