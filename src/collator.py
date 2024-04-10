@@ -12,44 +12,38 @@ from random import sample
 
 
 def _llm_tokenize(prompts: List[str], texts: List[str], tokenizer: PreTrainedTokenizer, args: TrainingArguments) -> Dict[str, torch.Tensor]:
-    if prompts is None:
-        encodings = tokenizer(texts, add_special_tokens=True)
-        input_ids = encodings['input_ids']
-        attention_mask = encodings['attention_mask']
-        labels = deepcopy(input_ids)
+    input_ids = []
+    labels = []
+    for prompt, text in zip(prompts, texts):
+        prompt_ids = tokenizer.encode(prompt, add_special_tokens=False)
+        text_ids = tokenizer.encode(text, add_special_tokens=False)
+        response_start_idx = len(prompt_ids)
+        if prompt_ids != text_ids[:response_start_idx]:
+            response_start_idx -= 1
+            prompt_ids = text_ids[:response_start_idx]
+        if args.add_special_tokens:
+            text_ids = [tokenizer.bos_token_id] + text_ids + [tokenizer.eos_token_id]
+        if len(text_ids) > args.model_max_length:
+            text_ids = text_ids[-args.model_max_length:]
+        label = deepcopy(text_ids)
+        if args.only_predict_answer:
+            label[:len(prompt_ids) + 1] = [-100] * (len(prompt_ids) + 1)
+
+        input_ids.append(torch.tensor(text_ids))
+        labels.append(torch.tensor(label))
+    
+    input_ids = pad_sequence(input_ids, batch_first=True, padding_value=tokenizer.pad_token_id)
+    if args.pad_labels_with_ignore:
+        labels = pad_sequence(labels, batch_first=True, padding_value=-100)
     else:
-        input_ids = []
-        labels = []
-        for prompt, text in zip(prompts, texts):
-            prompt_ids = tokenizer.encode(prompt, add_special_tokens=False)
-            text_ids = tokenizer.encode(text, add_special_tokens=False)
-            response_start_idx = len(prompt_ids)
-            if prompt_ids != text_ids[:response_start_idx]:
-                response_start_idx -= 1
-                prompt_ids = text_ids[:response_start_idx]
-            if args.add_special_tokens:
-                text_ids = [tokenizer.bos_token_id] + text_ids + [tokenizer.eos_token_id]
-            if len(text_ids) > args.model_max_length:
-                text_ids = text_ids[-args.model_max_length:]
-            label = deepcopy(text_ids)
-            if args.only_predict_answer:
-                label[:len(prompt_ids) + 1] = [-100] * (len(prompt_ids) + 1)
+        labels = pad_sequence(labels, batch_first=True, padding_value=tokenizer.pad_token_id)
 
-            input_ids.append(torch.tensor(text_ids[-args.model_max_length:]))
-            labels.append(torch.tensor(label[-args.model_max_length:]))
-        
-        input_ids = pad_sequence(input_ids, batch_first=True, padding_value=tokenizer.pad_token_id)
-        if args.pad_labels_with_ignore:
-            labels = pad_sequence(labels, batch_first=True, padding_value=-100)
-        else:
-            labels = pad_sequence(labels, batch_first=True, padding_value=tokenizer.pad_token_id)
+    if args.debug_mode: # If debug_model is True, then pad the sequence into the max token length.
+        input_ids = F.pad(input_ids, (0, tokenizer.model_max_length - input_ids.shape[0]), mode='constant', value=tokenizer.pad_token_id)
+        labels = F.pad(labels, (0, tokenizer.model_max_length - input_ids.shape[0]), mode='constant', value=args.ignore_token_id 
+                    if args.pad_labels_with_ignore else tokenizer.pad_token_id)
 
-        if args.debug_mode: # If debug_model is True, then pad the sequence into the max token length.
-            input_ids = F.pad(input_ids, (0, tokenizer.model_max_length - input_ids.shape[0]), mode='constant', value=tokenizer.pad_token_id)
-            labels = F.pad(labels, (0, tokenizer.model_max_length - input_ids.shape[0]), mode='constant', value=args.ignore_token_id 
-                        if args.pad_labels_with_ignore else tokenizer.pad_token_id)
-
-        attention_mask = torch.ne(input_ids, tokenizer.pad_token_id)
+    attention_mask = torch.ne(input_ids, tokenizer.pad_token_id)
 
     return {
         "input_ids": input_ids,
