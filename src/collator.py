@@ -1,14 +1,16 @@
 import torch
 from .arguments import TrainingArguments
-from transformers import PreTrainedTokenizer, PreTrainedModel
+from transformers import PreTrainedTokenizer
 from typing import List, Dict
 from copy import deepcopy
 from torch.nn.utils.rnn import pad_sequence
 import torch.nn.functional as F
-from .utils import print_rank_0
-from .models.utils import RefModel
+from transformers.trainer_pt_utils import LabelSmoother
 from datasets import Dataset
 from random import sample
+
+
+IGNORE_TOKEN_ID = LabelSmoother.ignore_index
 
 
 def _llm_tokenize(prompts: List[str], texts: List[str], tokenizer: PreTrainedTokenizer, args: TrainingArguments) -> Dict[str, torch.Tensor]:
@@ -27,14 +29,14 @@ def _llm_tokenize(prompts: List[str], texts: List[str], tokenizer: PreTrainedTok
             text_ids = text_ids[-args.model_max_length:]
         label = deepcopy(text_ids)
         if args.only_predict_answer:
-            label[:len(prompt_ids) + 1] = [-100] * (len(prompt_ids) + 1)
+            label[:len(prompt_ids) + 1] = [IGNORE_TOKEN_ID] * (len(prompt_ids) + 1)
 
         input_ids.append(torch.tensor(text_ids))
         labels.append(torch.tensor(label))
     
     input_ids = pad_sequence(input_ids, batch_first=True, padding_value=tokenizer.pad_token_id)
     if args.pad_labels_with_ignore:
-        labels = pad_sequence(labels, batch_first=True, padding_value=-100)
+        labels = pad_sequence(labels, batch_first=True, padding_value=-IGNORE_TOKEN_ID)
     else:
         labels = pad_sequence(labels, batch_first=True, padding_value=tokenizer.pad_token_id)
 
@@ -85,7 +87,8 @@ def reward_data_collactor(tokenizer: PreTrainedTokenizer, args: TrainingArgument
         for example in examples:
             if len(example['texts']) < num_sample:
                 example['texts'].extend([' ']*(num_sample - len(example['texts'])))
-                example['scores'].extend([-100]*(num_sample - len(example['scores'])))
+                min_score = torch.min(examples['scores'])
+                example['scores'].extend([min_score-1]*(num_sample - len(example['scores'])))
             all_texts.extend(example['texts'])
             all_scores.extend(example['scores'])
 
