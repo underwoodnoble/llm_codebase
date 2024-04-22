@@ -1,6 +1,6 @@
 import torch
-from .arguments import TrainingArguments
-from transformers import PreTrainedTokenizer
+from .arguments import SFTTrainingArguments, GenericTrainingArguments
+from transformers import PreTrainedTokenizer, TrainingArguments
 from typing import List, Dict
 from copy import deepcopy
 from torch.nn.utils.rnn import pad_sequence
@@ -13,7 +13,7 @@ from random import sample
 IGNORE_TOKEN_ID = LabelSmoother.ignore_index
 
 
-def _llm_tokenize(prompts: List[str], texts: List[str], tokenizer: PreTrainedTokenizer, args: TrainingArguments) -> Dict[str, torch.Tensor]:
+def _llm_tokenize(prompts: List[str], texts: List[str], tokenizer: PreTrainedTokenizer, args: GenericTrainingArguments) -> Dict[str, torch.Tensor]:
     input_ids = []
     labels = []
     for prompt, text in zip(prompts, texts):
@@ -22,14 +22,15 @@ def _llm_tokenize(prompts: List[str], texts: List[str], tokenizer: PreTrainedTok
         response_start_idx = len(prompt_ids)
         if prompt_ids != text_ids[:response_start_idx]:
             response_start_idx -= 1
-            prompt_ids = text_ids[:response_start_idx]
         if args.add_special_tokens:
+            response_start_idx += 1
             text_ids = [tokenizer.bos_token_id] + text_ids + [tokenizer.eos_token_id]
-        if len(text_ids) > args.model_max_length:
-            text_ids = text_ids[-args.model_max_length:]
         label = deepcopy(text_ids)
         if args.only_predict_answer:
-            label[:len(prompt_ids) + 1] = [IGNORE_TOKEN_ID] * (len(prompt_ids) + 1)
+            label[:response_start_idx] = [IGNORE_TOKEN_ID] * response_start_idx
+        if len(text_ids) > args.model_max_length:
+            text_ids = text_ids[-tokenizer.model_max_length:]
+            label = label[-tokenizer.model_max_length]
 
         input_ids.append(torch.tensor(text_ids))
         labels.append(torch.tensor(label))
@@ -103,7 +104,7 @@ def reward_data_collactor(tokenizer: PreTrainedTokenizer, args: TrainingArgument
     return collator
 
     
-def sft_data_collator(tokenizer: PreTrainedTokenizer, args: TrainingArguments):
+def sft_data_collator(tokenizer: PreTrainedTokenizer, args: SFTTrainingArguments):
     def collator(examples):
         texts = []
         prompts = []
