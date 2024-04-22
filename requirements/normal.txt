@@ -17,3 +17,4 @@ pydantic
 fastapi
 sse-starlette
 matplotlib
+deepspeed>=0.13.1

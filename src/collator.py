@@ -103,7 +103,7 @@ def reward_data_collactor(tokenizer: PreTrainedTokenizer, args: TrainingArgument
     return collator
 
     
-def sft_data_collactor(tokenizer: PreTrainedTokenizer, args: TrainingArguments):
+def sft_data_collator(tokenizer: PreTrainedTokenizer, args: TrainingArguments):
     def collator(examples):
         texts = []
         prompts = []

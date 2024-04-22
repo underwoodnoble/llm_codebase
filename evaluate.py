@@ -11,7 +11,7 @@ from tqdm import tqdm
 import torch
 from concurrent.futures import ThreadPoolExecutor
 import time
-from src.collator import reward_data_collator
+from src.collator import reward_data_collactor
 
 def get_args():
     parser = ArgumentParser()
@@ -161,7 +161,7 @@ def expected_calibration_error(args):
         sub_truth = []
         with distributed_state.split_between_processes(dataset[i:i+args.cache_size]) as sub_dataset:
             sub_dataset = Dataset.from_list(sub_dataset)
-            data_loader = DataLoader(sub_dataset, batch_size=args.batch_size, collate_fn=reward_data_collator(tokenizer))
+            data_loader = DataLoader(sub_dataset, batch_size=args.batch_size, collate_fn=reward_data_collactor(tokenizer))
             for batch in data_loader:
                 preds, truth = compute_preference_confidence(batch, tokenizer, model)
                 sub_preds.extend(preds)

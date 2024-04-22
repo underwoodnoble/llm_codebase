@@ -19,6 +19,12 @@ parser.add_argument("--model_type")
 parser.add_argument("--device")
 args = parser.parse_args()
 
+
+class CasualLMModel:
+    def __init__(self, model_path):
+        self.tokenizer = AutoTokenizer.from_pretrained(model_path, trust_remote_code=True, truncation_side=True, padding_side=True)
+        self.model = AutoModelForCausalLM.from_pretrained(model_path, trust_remote_code=True)
+
 class RefModel:
     def __init__(self, model_path):
         self.ref_model = AutoModelForCausalLM.from_pretrained(model_path, trust_remote_code=True)

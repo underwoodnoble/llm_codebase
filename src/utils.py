@@ -3,9 +3,8 @@ import json
 from tqdm import tqdm
 from transformers import (LlamaTokenizer, BertForSequenceClassification, BertConfig, PretrainedConfig,
 BertTokenizer, LlamaForCausalLM, LlamaConfig, PreTrainedTokenizer,
-PreTrainedModel, LlamaForSequenceClassification)
+PreTrainedModel, LlamaForSequenceClassification, Qwen2Tokenizer, Qwen2Config, Qwen2ForCausalLM)
 from .models.RewardModel import LlamaRewardModel, QwenRewardModel, BaichuanRewardModel
-from .models.BaseModel.Qwen import QWenConfig, QWenTokenizer, QWenLMHeadModel
 from .models.BaseModel.Baichuan2 import BaichuanConfig, BaichuanTokenizer, BaichuanForCausalLM
 from .arguments import TrainingArguments
 import os
@@ -277,12 +276,12 @@ def loadTokenizerAndModel(args: TrainingArguments) -> Tuple[PreTrainedTokenizer,
         "RM": {
             "bert": {"config": BertConfig, "tokenizer": BertTokenizer, "model": BertForSequenceClassification},
             "llama": {"config": LlamaConfig, "tokenizer": LlamaTokenizer, "model": LlamaRewardModel},
-            "qwen": {"config": QWenConfig, "tokenizer": QWenTokenizer, "model": QwenRewardModel},
+            "qwen": {"config": Qwen2Config, "tokenizer": Qwen2Tokenizer, "model": QwenRewardModel},
             "baichuan": {"config": BaichuanConfig, "tokenizer": BaichuanTokenizer, "model": BaichuanRewardModel}
         },
         "CausalLM": {
             "llama": {"config": LlamaConfig, "tokenizer": LlamaTokenizer, "model": LlamaForCausalLM},
-            "qwen": {"config": QWenConfig, "tokenizer": QWenTokenizer, "model": QWenLMHeadModel},
+            "qwen": {"config": Qwen2Config, "tokenizer": Qwen2Tokenizer, "model": Qwen2ForCausalLM},
             "baichuan": {"config": BaichuanConfig, "tokenizer": BaichuanTokenizer, "model": BaichuanForCausalLM}
         },
         "Classification": {

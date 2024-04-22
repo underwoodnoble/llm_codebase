@@ -1,5 +1,5 @@
-from transformers import LlamaTokenizer, LlamaForCausalLM, GenerationConfig, PreTrainedTokenizer, PreTrainedModel, AutoTokenizer
-from src.models.RewardModel import PythiaRewardModel, LlamaRewardModel
+from transformers import LlamaTokenizer, LlamaForCausalLM, GenerationConfig, PreTrainedTokenizer, PreTrainedModel, AutoTokenizer, Qwen2Tokenizer
+from src.models.RewardModel import PythiaRewardModel, LlamaRewardModel, QwenRewardModel
 import json
 from typing import List, Dict, Tuple
 import torch
@@ -7,6 +7,7 @@ from argparse import ArgumentParser
 from src.utils import read_json_or_jsonl_data, print_rank_0
 from accelerate import PartialState
 from accelerate.utils import gather_object
+from deepspeed import init_inference
 
 
 def load_dataset(args):
@@ -90,6 +91,9 @@ def load_tokenizer_and_model(args) -> Tuple[PreTrainedModel, PreTrainedModel]:
         elif args.model_type == 'llama':
             tokenizer = AutoTokenizer.from_pretrained(args.model_name_or_path, trucation_side='left')
             model = LlamaRewardModel.from_pretrained(args.model_name_or_path)
+        elif args.model_type == 'qwen':
+            tokenizer = Qwen2Tokenizer.from_pretrained(args.model_name_or_path, truncation_side='left', trust_remote_code=True)
+            model = QwenRewardModel.from_pretrained(args.model_name_or_path, torch_dtype=torch.half)
 
     return tokenizer, model
 
@@ -165,7 +169,7 @@ def main(args):
 if __name__ == '__main__':
     parser = ArgumentParser()
     parser.add_argument(
-        '--model_type', type=str, choices=['llama', 'pythia']
+        '--model_type', type=str, choices=['llama', 'pythia', 'qwen']
     )
     parser.add_argument(
         '--task_type', type=str, choices=['llm_inference', 'reward_model_inference']
