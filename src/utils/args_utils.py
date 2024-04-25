@@ -15,12 +15,14 @@ def get_args():
     subparsers.add_parser('sft', help="Using SFT parser")
     subparsers.add_parser('rm', help="Using RM parser")
 
-    # For distributed training, 
-    if sys.argv[1].startswith('--local_rank'):
-        temp = sys.argv[1]
-        sys.argv[1] = sys.argv[2]
-        sys.argv[2] = temp
-    algorithm_args = parser.parse_args(sys.argv[1:2])
+    supported_algorithms = list(subparsers.choices.keys())
+    # Some distributed training frameworks add additional argumes.
+    for argument in sys.argv[1:]:
+        if argument in supported_algorithms:
+            algorithm_args = parser.parse_args([argument])
+            sys.argv.remove(argument)
+            break
+
     if not hasattr(algorithm_args, 'algorithm'):
         parser.print_help()
         sys.exit(1)
@@ -31,4 +33,4 @@ def get_args():
     elif algorithm_args.algorithm == 'rm':
         subparser = HfArgumentParser((RMTrainingArguments, RMDataArguments))
 
-    return algorithm_args.algorithm, subparser.parse_args_into_dataclasses(sys.argv[2:])
+    return algorithm_args.algorithm, subparser.parse_args_into_dataclasses(sys.argv[1:])

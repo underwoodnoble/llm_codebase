@@ -1,17 +1,15 @@
 from dataclasses import dataclass, field
 from typing import Optional, List
+from pathlib import Path
 
 
 @dataclass
 class BaseDataArguments:
-    data_dirs: Optional[List[str]] = field(default=None, metadata={"help": "The directories for loading training dataset."})
-    data_paths: Optional[List[str]] = field(default=None, metadata={"help": "Training dataset paths."})
-
-    eval_data_dirs: Optional[str] = field(default=None, metadata={"help": "The directories for loading evaluation dataset."})
-    eval_data_paths: Optional[List[str]] = field(default=None, metadata={"help": "evaluation dataset paths."})
+    data_paths: Optional[List[Path]] = field(default=None, metadata={"help": "Training dataset files or dirs."})
+    eval_data_paths: Optional[List[Path]] = field(default=None, metadata={"help": "evaluation dataset files or dirs."})
     eval_dataset_merge_mode: str = field(
         default='separate',
-        metadata={"help": "How to evaluate multiple evalution datasets. Must be one of ['separate', 'merge', 'both']"})
+        metadata={"help": "How to evaluate multiple evalution datasets. Must be one of ['separate', 'merge']"})
 
     streaming: bool = field(
         default=False,
@@ -19,8 +17,8 @@ class BaseDataArguments:
     )
 
     def __post_init__(self):
-        if self.data_dirs is None and self.data_paths is None:
-            raise ValueError("data_dirs and data_paths must have at least one that is not None")
+        if self.data_paths is None and self.eval_data_paths is None:
+            raise ValueError("data_paths and eval_data_paths must have at least one that is not None")
 
 
 @dataclass
@@ -32,6 +30,8 @@ class SFTDataArguments(BaseDataArguments):
 
     user_name: Optional[str] = field(default="qa", metadata={"help": "The field corresponding to user."})
     assistant_name: Optional[str] = field(default='dialogue', metadata={"help": "The field corresponding to assistant."})
+
+    weight_name: Optional[str] = field(default="weight", metadata={"help": ""})
 
     
     def __post_init__(self):

@@ -46,7 +46,7 @@ def load_causal_lm(
     training_args: GenericTrainingArguments,
     load_ref_model: bool
     ) -> Tuple[PreTrainedTokenizer, PreTrainedModel, Optional[PreTrainedModel]]:
-    def _load(model_name_or_path):
+    def _load():
         tokenizer = AutoTokenizer.from_pretrained(
         training_args.model_name_or_path,
         truncation_side='left',
@@ -61,9 +61,9 @@ def load_causal_lm(
         return tokenizer, model
 
     print_rank_0(f"Load model from {training_args.model_name_or_path}")
-    tokenizer,model = _load(training_args.model_name_or_path)
+    tokenizer,model = _load()
     if load_ref_model:
-        _, ref_model = _load(training_args.model_name_or_path)
+        _, ref_model = _load()
     else:
         ref_model = None
     
@@ -72,13 +72,13 @@ def load_causal_lm(
 
 def load_rm_model(training_args: GenericTrainingArguments):
     pass
-        
+
 
 def load_tokenizer_and_model(training_args: GenericTrainingArguments, algorithm: str):
     if algorithm in ['sft']:
         tokenizer, model, ref_model = load_causal_lm(
             training_args,
-            training_args.kl is not None
+            training_args.kl_coeff is not None
         )
     
     tokenizer.model_max_length = training_args.model_max_length

@@ -5,7 +5,6 @@ from src.utils.model_utils import load_tokenizer_and_model
 from src.utils.general_utils import print_object_on_main_process
 
 
-
 def main(
     algorithm: str,
     training_args: GenericTrainingArguments,
@@ -14,7 +13,7 @@ def main(
 
     # Loading Dataset
     train_dataset, eval_dataset = load_dataset(data_args, algorithm)
-    print_object_on_main_process("training_set", train_dataset)
+    print_object_on_main_process("train_dataset", train_dataset)
     print_object_on_main_process("eval_dataset", eval_dataset)
     
 
