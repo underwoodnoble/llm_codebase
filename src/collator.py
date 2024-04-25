@@ -108,12 +108,16 @@ def sft_data_collator(tokenizer: PreTrainedTokenizer, args: SFTTrainingArguments
     def collator(examples):
         texts = []
         prompts = []
+        weights = []
         for example in examples:
             text = example['prompt'] + example['answer']
             texts.append(text)
             prompts.append(example['prompt'])
+            weights.append(example['weight'])
 
-        return _llm_tokenize(prompts, texts, tokenizer, args)
+        ret = _llm_tokenize(prompts, texts, tokenizer, args)
+        ret['weight'] = torch.tensor(weights)
+        return ret
     
     return collator
 
