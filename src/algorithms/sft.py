@@ -2,10 +2,8 @@ from ..arguments import SFTDataArguments
 import torch
 from .base import BaseTrainer
 from typing import Dict
-from transformers.trainer_pt_utils import LabelSmoother
+from .utils import IGNORE_INDEX
 
-
-IGNORE_TOKEN_ID = LabelSmoother.ignore_index
 
 
 def sft_transform(data_args: SFTDataArguments):
@@ -63,7 +61,7 @@ class SFTTrainer(BaseTrainer):
             kl_divergence = self.compute_kl_divergence(logprob, ref_logprob, kl_penalty=self.args.kl_penalty_mode)
             # mask
             shift_labels = inputs['labels'][:, 1:]
-            mask = torch.not_equal(shift_labels, IGNORE_TOKEN_ID)
+            mask = torch.not_equal(shift_labels, IGNORE_INDEX)
             kl_divergence = (kl_divergence * mask).sum() / mask.sum()
             loss = model_outputs.loss + self.args.kl_coeff * kl_divergence
         

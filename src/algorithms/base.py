@@ -1,12 +1,15 @@
-from transformers import (Trainer, PreTrainedModel,
-    PreTrainedTokenizerBase, TrainerCallback, EvalPrediction)
 from typing import Union, Optional, List, Tuple, Callable, Dict
+
 from datasets import Dataset
 import torch
 from torch import nn
+from transformers import (Trainer, PreTrainedModel,
+    PreTrainedTokenizerBase, TrainerCallback, EvalPrediction)
 import deepspeed
-from ..arguments import GenericTrainingArguments
 from copy import deepcopy
+
+from .utils import IGNORE_INDEX
+from ..arguments import GenericTrainingArguments
 
 
 class BaseTrainer(Trainer):
@@ -96,7 +99,8 @@ class BaseTrainer(Trainer):
 
         if not gather:
             return logp
-        logpy = torch.gather(logp, 2, labels.unsqueeze(2)).squeeze(-1)
+        mask = torch.not_equal(labels, IGNORE_INDEX)
+        logpy = torch.gather(logp, 2, (labels * mask).unsqueeze(2)).squeeze(-1)
         return logpy
 
         
