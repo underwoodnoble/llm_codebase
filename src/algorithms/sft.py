@@ -33,10 +33,7 @@ class SFTTrainer(BaseTrainer):
         labels: (batch_size, seq_len)
         """
         shift_logits = logits[:, :-1, :]
-        if labels is not None:
-            shift_labels = labels[:, 1:]
-        else:
-            shift_labels = None
+        shift_labels = labels[:, 1:] if labels is not None else None
 
         return BaseTrainer.logprobs_from_logits(shift_logits, shift_labels, gather)
 
