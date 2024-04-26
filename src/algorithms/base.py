@@ -97,7 +97,6 @@ class BaseTrainer(Trainer):
         if not gather:
             return logp
         logpy = torch.gather(logp, 2, labels.unsqueeze(2)).squeeze(-1)
-        torch.linspace(0, 9, 1)
         return logpy
 
         
