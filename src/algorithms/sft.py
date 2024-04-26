@@ -10,43 +10,18 @@ IGNORE_TOKEN_ID = LabelSmoother.ignore_index
 
 def sft_transform(data_args: SFTDataArguments):
     def transform(example: Dict):
-        if data_args.data_format == 'qa':
-            if data_args.prompt_name != 'prompt' or data_args.answer_name != 'prompt' or data_args.weight_name != 'weight':
-                return {
-                    "prompt": example[data_args.prompt_name],
-                    "answer": example[data_args.answer_name],
-                    "weight": example.get(data_args.weight_name, 1.0)
-                }
-        else:
-            pass
+        if data_args.prompt_name != 'prompt' or data_args.answer_name != 'prompt' or data_args.weight_name != 'weight':
+            return {
+                "prompt": example[data_args.prompt_name],
+                "answer": example[data_args.answer_name],
+                "weight": example.get(data_args.weight_name, 1.0)
+            }
 
         return example
     return transform
 
 
 class SFTTrainer(BaseTrainer):
-    @staticmethod
-    def compute_lm_loglikeli(logits, labels):
-        batch_size, seq_length, vocab_size = logits.shape
-            
-        shift_logits = logits[..., :-1, :].contiguous()
-        shift_labels = labels[..., 1:].contiguous()
-        
-        # Flatten the tokens
-        loss_fct = torch.nn.CrossEntropyLoss(reduction='none')
-        shift_logits = shift_logits.view(-1, vocab_size)
-        shift_labels = shift_labels.view(-1)
-        
-        # Enable model parallelism
-        shift_labels = shift_labels.to(shift_logits.device)
-        loss = loss_fct(shift_logits, shift_labels).reshape(batch_size, -1) # [bs * seq_len]
-        ignore_mask = labels != -100
-        
-        mean_loss = loss.sum(dim=-1) / ignore_mask.sum(dim=-1)
-
-        return - mean_loss #loss.reshape(batch_size, -1).mean(dim=-1)
-
-
     def _is_create_ref_model(self) -> bool:
         return self.args.kl_coeff is not None
 
@@ -64,6 +39,7 @@ class SFTTrainer(BaseTrainer):
             shift_labels = None
 
         return BaseTrainer.logprobs_from_logits(shift_logits, shift_labels, gather)
+
 
     def compute_loss(self, model: torch.nn.Module, inputs: Dict[str, torch.Tensor], return_outputs=False):
         model_outputs = model(
