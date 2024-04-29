@@ -30,14 +30,14 @@ def _llm_tokenize(prompts: List[str], texts: List[str], tokenizer: PreTrainedTok
             label[:response_start_idx] = [IGNORE_TOKEN_ID] * response_start_idx
         if len(text_ids) > args.model_max_length:
             text_ids = text_ids[-tokenizer.model_max_length:]
-            label = label[-tokenizer.model_max_length]
+            label = label[-tokenizer.model_max_length:]
 
         input_ids.append(torch.tensor(text_ids))
         labels.append(torch.tensor(label))
     
     input_ids = pad_sequence(input_ids, batch_first=True, padding_value=tokenizer.pad_token_id)
     if args.pad_labels_with_ignore:
-        labels = pad_sequence(labels, batch_first=True, padding_value=-IGNORE_TOKEN_ID)
+        labels = pad_sequence(labels, batch_first=True, padding_value=IGNORE_TOKEN_ID)
     else:
         labels = pad_sequence(labels, batch_first=True, padding_value=tokenizer.pad_token_id)
 
