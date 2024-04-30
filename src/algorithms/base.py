@@ -1,4 +1,4 @@
-from typing import Union, Optional, List, Tuple, Callable, Dict, Literal
+from typing import Union, Optional, List, Tuple, Callable, Dict, Literal, Any
 from collections import defaultdict
 
 from datasets import Dataset
@@ -9,7 +9,7 @@ from transformers import (Trainer, PreTrainedModel,
 import deepspeed
 from copy import deepcopy
 
-from .utils import IGNORE_INDEX
+from .utils import IGNORE_INDEX, FixedKLController, AdaptiveKLController
 from ..arguments import GenericTrainingArguments
 
 
@@ -44,6 +44,7 @@ class BaseTrainer(Trainer):
         )
         self.args = args
         self._stored_metrics = defaultdict(lambda: defaultdict(list))
+
         if self._is_create_ref_model():
             self.ref_model = ref_model
             for param in self.ref_model.parameters():
@@ -53,6 +54,13 @@ class BaseTrainer(Trainer):
                 self.ref_model = self._prepare_deepspeed(self.ref_model)
             else:
                 self.ref_model = self.accelerator.prepare_model(self.ref_model, evaluation_mode=True)
+            
+            # kl setting
+            if self.args.kl_contorller == 'fixed':
+                self.kl_contorller = FixedKLController(self.args.kl_coeff)
+            else:
+                self.kl_contorller = AdaptiveKLController(self.args.kl_coeff, self.args.kl_target)
+            self.kl_step_buffer = []
     
 
     def _is_create_ref_model(self) -> bool:
@@ -129,6 +137,14 @@ class BaseTrainer(Trainer):
         
         if kl_penalty == 'full':
             return nn.functional.kl_div(ref_logprob, logprob, log_target=True, reduction='none').sum(-1)
+
+            
+    def training_step(self, model: nn.Module, inputs: Dict[str, Union[torch.Tensor, Any]]) -> torch.Tensor:
+        ret = super().training_step(self, model, inputs)
+        if len(self.kl_step_buffer) != 0:
+            current_kl = torch.tensor(self.kl_step_buffer).mean()
+            self.kl_contorller.update(current_kl)
+        return ret
 
             
     def store_metrics(self, metrics: Dict[str, float], train_eval: Literal["train", "eval"] = "train") -> None:

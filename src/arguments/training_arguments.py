@@ -22,6 +22,8 @@ class BaseTrainingArguments(transformers.TrainingArguments):
 class SFTTrainingArguments(BaseTrainingArguments):
     kl_coeff: Optional[float] = field(default=None, metadata={"help": "KL penalty weight."})
     kl_penalty_mode: Optional[str] = field(default='kl', metadata={"help": "KL penalty mode. One of ['kl', 'abs', 'mse', 'full']"})
+    kl_controller: Optional[str] = field(default='fixed', metadata={"help": "KL controller."})
+    kl_target: Optional[float] = field(default=6., metadata={"help": "The expected KL divergence value. Effective when the KL controller is 'AdaptiveKLController'"})
 
 
 @dataclass
