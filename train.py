@@ -1,3 +1,6 @@
+import json
+import os
+from datasets import Dataset
 from src.utils.args_utils import get_args
 from src.arguments import GenericDataArguments, GenericTrainingArguments
 from src.utils.data_utils import load_dataset
@@ -44,7 +47,11 @@ def main(
     trainer.train()
     
     # Operation after training
+    # save model
     trainer.save_model(output_dir=training_args.output_dir)
+    # save log
+    with open(os.path.join(training_args.output_dir, 'log_history.txt'), 'w') as f:
+        json.dump(trainer.state.log_history, f)
 
 
 if __name__ == '__main__':

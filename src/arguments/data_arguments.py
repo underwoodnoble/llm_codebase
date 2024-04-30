@@ -23,21 +23,13 @@ class BaseDataArguments:
 
 @dataclass
 class SFTDataArguments(BaseDataArguments):
-    data_format: str = field(default='qa', metadata={"help": "Data format. Should be 'qa' or 'dialogue'"})
-
     prompt_name: Optional[str] = field(default="prompt", metadata={"help": "The field corresponding to prompt."})
     answer_name: Optional[str] = field(default="answer", metadata={"help": "The field corresponding to answer."})
-
-    user_name: Optional[str] = field(default="qa", metadata={"help": "The field corresponding to user."})
-    assistant_name: Optional[str] = field(default='dialogue', metadata={"help": "The field corresponding to assistant."})
-
-    weight_name: Optional[str] = field(default="weight", metadata={"help": ""})
+    weight_name: Optional[str] = field(default="weight", metadata={"help": "The field corresponding to data weight."})
 
     
     def __post_init__(self):
         super().__post_init__()
-        if self.data_format not in ['qa', 'dialogue']:
-            raise ValueError(f"Do not support {self.data_format} data format.")
 
 
 @dataclass

@@ -40,7 +40,7 @@ class SFTTrainer(BaseTrainer):
         model_outputs = model(
             input_ids=inputs['input_ids'],
             attention_mask=inputs['attention_mask'],
-            label=inputs['labels']
+            labels=inputs['labels']
         )
 
         if self.args.kl_coeff is not None:
@@ -63,6 +63,7 @@ class SFTTrainer(BaseTrainer):
             shift_labels = inputs['labels'][:, 1:]
             mask = torch.not_equal(shift_labels, IGNORE_INDEX)
             kl_divergence = (kl_divergence * mask).sum() / mask.sum()
+            self.store_metrics({"kl": kl_divergence}, 'train')
             loss = model_outputs.loss + self.args.kl_coeff * kl_divergence
         
         else:

@@ -1,4 +1,5 @@
-from typing import Union, Optional, List, Tuple, Callable, Dict
+from typing import Union, Optional, List, Tuple, Callable, Dict, Literal
+from collections import defaultdict
 
 from datasets import Dataset
 import torch
@@ -42,6 +43,7 @@ class BaseTrainer(Trainer):
             preprocess_logits_for_metrics=preprocess_logits_for_metrics
         )
         self.args = args
+        self._stored_metrics = defaultdict(lambda: defaultdict(list))
         if self._is_create_ref_model():
             self.ref_model = ref_model
             for param in self.ref_model.parameters():
@@ -117,13 +119,26 @@ class BaseTrainer(Trainer):
         output: (batch_size, seq_len)
         """
         if kl_penalty == 'kl':
-            return logprob - ref_logprob
+            return torch.exp(logprob) * (logprob - ref_logprob)
         
         if kl_penalty == 'abs':
-            return (logprob - ref_logprob).abs()
+            return torch.exp(logprob) * (logprob - ref_logprob).abs()
         
         if kl_penalty == 'mse':
-            return 0.5 * (logprob - ref_logprob).square()
+            return 0.5 * torch.exp(logprob) * (logprob - ref_logprob).square()
         
         if kl_penalty == 'full':
             return nn.functional.kl_div(ref_logprob, logprob, log_target=True, reduction='none').sum(-1)
+
+            
+    def store_metrics(self, metrics: Dict[str, float], train_eval: Literal["train", "eval"] = "train") -> None:
+        for key, value in metrics.items():
+            self._stored_metrics[train_eval][key].append(value)
+
+
+    def log(self, logs: Dict[str, float]) -> None:
+        train_eval = "train" if "loss" in logs else "eval"
+        for key, metrics in self._stored_metrics[train_eval].items():
+            logs[key] = torch.tensor(metrics).mean().item()
+        del self._stored_metrics[train_eval]
+        return super().log(logs)
