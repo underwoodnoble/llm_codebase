@@ -42,7 +42,7 @@ class SFTTrainer(BaseTrainer):
             labels=inputs['labels']
         )
 
-        if self.args.kl_coeff is not None:
+        if self.args.kl_coef is not None:
             with torch.no_grad():
                 ref_model_outputs = self.ref_model(
                     input_ids=inputs['input_ids'],
@@ -68,7 +68,7 @@ class SFTTrainer(BaseTrainer):
             self.kl_step_buffer.append(kl_divergence)
             
             # compute final loss
-            loss = model_outputs.loss + self.args.kl_coeff * kl_divergence
+            loss = model_outputs.loss + self.args.kl_coef * kl_divergence
         
         else:
             loss = model_outputs.loss

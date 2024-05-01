@@ -60,9 +60,9 @@ class BaseTrainer(Trainer):
             
             # kl setting
             if self.args.adaptive_kl_ctrl:
-                self.kl_contorller = AdaptiveKLController(self.args.kl_coeff, self.args.kl_target)
+                self.kl_contorller = AdaptiveKLController(self.args.kl_coef, self.args.kl_target)
             else:
-                self.kl_contorller = FixedKLController(self.args.kl_coeff)
+                self.kl_contorller = FixedKLController(self.args.kl_coef)
             self.kl_step_buffer = []
     
 
@@ -70,7 +70,7 @@ class BaseTrainer(Trainer):
         """
         The function returns a boolean value that determines whether to create a reference model.
         """
-        return self.args.kl_coeff is not None
+        return self.args.kl_coef is not None
     
 
     def _prepare_deepspeed(self, model: PreTrainedModel):
