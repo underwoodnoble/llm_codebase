@@ -63,12 +63,13 @@ class SFTTrainer(BaseTrainer):
             mask = torch.not_equal(shift_labels, IGNORE_INDEX)
             kl_divergence = (kl_divergence * mask).sum() / mask.sum()
 
-            # log kl
+            # log kl and kl coef
             self.store_metrics({"kl": kl_divergence}, 'train')
+            self.store_metrics({"kl_coef": self.kl_contorller.value})
             self.kl_step_buffer.append(kl_divergence)
             
             # compute final loss
-            loss = model_outputs.loss + self.args.kl_coef * kl_divergence
+            loss = model_outputs.loss + self.kl_contorller.value * kl_divergence
         
         else:
             loss = model_outputs.loss

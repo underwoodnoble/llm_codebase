@@ -145,8 +145,12 @@ class BaseTrainer(Trainer):
     def training_step(self, model: nn.Module, inputs: Dict[str, Union[torch.Tensor, Any]]) -> torch.Tensor:
         ret = super().training_step(self, model, inputs)
         if len(self.kl_step_buffer) != 0:
+            # calculate current kl
             current_kl = torch.tensor(self.kl_step_buffer).mean()
+            # update kl coef
             self.kl_contorller.update(current_kl)
+            # clear kl step buffer
+            self.kl_step_buffer = []
         return ret
 
             
