@@ -130,13 +130,13 @@ class BaseTrainer(Trainer):
         output: (batch_size, seq_len)
         """
         if kl_penalty == 'kl':
-            return torch.exp(logprob) * (logprob - ref_logprob)
+            return logprob - ref_logprob
         
         if kl_penalty == 'abs':
-            return torch.exp(logprob) * (logprob - ref_logprob).abs()
+            return (logprob - ref_logprob).abs()
         
         if kl_penalty == 'mse':
-            return 0.5 * torch.exp(logprob) * (logprob - ref_logprob).square()
+            return 0.5 * (logprob - ref_logprob).square()
         
         if kl_penalty == 'full':
             return nn.functional.kl_div(ref_logprob, logprob, log_target=True, reduction='none').sum(-1)
