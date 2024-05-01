@@ -13,6 +13,14 @@ class BaseTrainingArguments(transformers.TrainingArguments):
     add_special_tokens: Optional[bool] = field(default=False, metadata={"help": "Whether to add the bos token and eos token automatically "})
     only_predict_answer: Optional[bool] = field(default=True, metadata={"help": "Only calculate the loss of answer."})
     pad_labels_with_ignore: Optional[bool] = field(default=True, metadata={"help": "Pad labels with ignore token id."})
+
+    # kl arguments
+    kl_coeff: Optional[float] = field(default=None, metadata={"help": "KL penalty weight."})
+    kl_penalty_mode: Optional[str] = field(default='kl', metadata={"help": "KL penalty mode. One of ['kl', 'abs', 'mse', 'full']"})
+    adaptive_kl_ctrl: Optional[bool] = field(default=False, metadata={"help": "Using adaptive KL controller."})
+    kl_target: Optional[float] = field(default=6., metadata={"help": "The expected KL divergence value. Effective when the KL controller is 'AdaptiveKLController'"})
+
+
     def __post_init__(self):
         super().__post_init__()
         self.remove_unused_columns = False
@@ -20,10 +28,7 @@ class BaseTrainingArguments(transformers.TrainingArguments):
 
 @dataclass
 class SFTTrainingArguments(BaseTrainingArguments):
-    kl_coeff: Optional[float] = field(default=None, metadata={"help": "KL penalty weight."})
-    kl_penalty_mode: Optional[str] = field(default='kl', metadata={"help": "KL penalty mode. One of ['kl', 'abs', 'mse', 'full']"})
-    kl_controller: Optional[str] = field(default='fixed', metadata={"help": "KL controller."})
-    kl_target: Optional[float] = field(default=6., metadata={"help": "The expected KL divergence value. Effective when the KL controller is 'AdaptiveKLController'"})
+    pass
 
 
 @dataclass

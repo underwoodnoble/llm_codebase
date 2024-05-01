@@ -1,4 +1,4 @@
-from ..arguments import SFTDataArguments
+from ..arguments import SFTDataArguments, SFTTrainingArguments
 import torch
 from .base import BaseTrainer
 from typing import Dict
@@ -20,6 +20,9 @@ def sft_transform(data_args: SFTDataArguments):
 
 
 class SFTTrainer(BaseTrainer):
+    args: SFTTrainingArguments
+
+
     def _is_create_ref_model(self) -> bool:
         return self.args.kl_coeff is not None
 

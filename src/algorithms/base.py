@@ -10,15 +10,18 @@ import deepspeed
 from copy import deepcopy
 
 from .utils import IGNORE_INDEX, FixedKLController, AdaptiveKLController
-from ..arguments import GenericTrainingArguments
+from ..arguments.training_arguments import BaseTrainingArguments
 
 
 class BaseTrainer(Trainer):
+    args: BaseTrainingArguments
+
+
     def __init__(
         self,
         model: Union[PreTrainedModel, nn.Module] = None,
         ref_model: Union[PreTrainedModel, nn.Module] = None,
-        args: GenericTrainingArguments = None,
+        args: BaseTrainingArguments = None,
         data_collator: Optional[Callable] = None,
         train_dataset: Optional[Dataset] = None,
         eval_dataset: Optional[Union[Dataset, Dict[str, Dataset]]] = None,
@@ -42,7 +45,7 @@ class BaseTrainer(Trainer):
             optimizers=optimizers,
             preprocess_logits_for_metrics=preprocess_logits_for_metrics
         )
-        self.args = args
+
         self._stored_metrics = defaultdict(lambda: defaultdict(list))
 
         if self._is_create_ref_model():
@@ -56,10 +59,10 @@ class BaseTrainer(Trainer):
                 self.ref_model = self.accelerator.prepare_model(self.ref_model, evaluation_mode=True)
             
             # kl setting
-            if self.args.kl_contorller == 'fixed':
-                self.kl_contorller = FixedKLController(self.args.kl_coeff)
-            else:
+            if self.args.adaptive_kl_ctrl:
                 self.kl_contorller = AdaptiveKLController(self.args.kl_coeff, self.args.kl_target)
+            else:
+                self.kl_contorller = FixedKLController(self.args.kl_coeff)
             self.kl_step_buffer = []
     
 
