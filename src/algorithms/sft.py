@@ -23,10 +23,6 @@ class SFTTrainer(BaseTrainer):
     args: SFTTrainingArguments
 
 
-    def _is_create_ref_model(self) -> bool:
-        return self.args.kl_coeff is not None
-
-
     @staticmethod
     def logprobs_from_logits(logits: torch.Tensor, labels: torch.Tensor = None, gather: bool = True) -> torch.Tensor:
         """

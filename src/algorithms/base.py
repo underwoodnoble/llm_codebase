@@ -70,7 +70,7 @@ class BaseTrainer(Trainer):
         """
         The function returns a boolean value that determines whether to create a reference model.
         """
-        raise NotImplemented
+        return self.args.kl_coeff is not None
     
 
     def _prepare_deepspeed(self, model: PreTrainedModel):

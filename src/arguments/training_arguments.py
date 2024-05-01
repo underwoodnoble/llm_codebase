@@ -34,3 +34,8 @@ class SFTTrainingArguments(BaseTrainingArguments):
 @dataclass
 class RMTrainingArguments(BaseTrainingArguments):
     pass
+
+
+@dataclass
+class OfflinePPOTrainingArguments(BaseTrainingArguments):
+    pass

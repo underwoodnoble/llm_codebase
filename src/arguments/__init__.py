@@ -1,4 +1,4 @@
-from .training_arguments import SFTTrainingArguments, RMTrainingArguments
+from .training_arguments import SFTTrainingArguments, RMTrainingArguments, OfflinePPOTrainingArguments
 from .data_arguments import SFTDataArguments, RMDataArguments
 from .inference_arguments import InferenceArguments
 from typing import TypeVar
