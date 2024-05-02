@@ -1,21 +1,20 @@
-from ..arguments import SFTDataArguments, SFTTrainingArguments
+from typing import Dict, Any
+
 import torch
+
+from ..arguments import SFTDataArguments, SFTTrainingArguments
 from .base import BaseTrainer
-from typing import Dict
 from .utils import IGNORE_INDEX
 
 
 
 def sft_transform(data_args: SFTDataArguments):
-    def transform(example: Dict):
-        if data_args.prompt_name != 'prompt' or data_args.answer_name != 'prompt' or data_args.weight_name != 'weight':
-            return {
-                "prompt": example[data_args.prompt_name],
-                "answer": example[data_args.answer_name],
-                "weight": example.get(data_args.weight_name, 1.0)
-            }
-
-        return example
+    def transform(example: Dict[str, Any]):
+        return {
+            "prompt": example[data_args.prompt_name],
+            "answer": example[data_args.answer_name],
+            "weight": example.get(data_args.weight_name, 1.0)
+        }
     return transform
 
 
@@ -64,8 +63,9 @@ class SFTTrainer(BaseTrainer):
             kl_divergence = (kl_divergence * mask).sum() / mask.sum()
 
             # log kl and kl coef
-            self.store_metrics({"kl": kl_divergence}, 'train')
-            self.store_metrics({"kl_coef": self.kl_contorller.value})
+            train_eval = 'train' if model.training else 'eval'
+            self.store_metrics({"kl": kl_divergence}, train_eval)
+            self.store_metrics({"kl_coef": self.kl_contorller.value}, train_eval)
             self.kl_step_buffer.append(kl_divergence)
             
             # compute final loss
