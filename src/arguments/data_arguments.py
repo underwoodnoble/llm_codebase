@@ -35,3 +35,14 @@ class SFTDataArguments(BaseDataArguments):
 @dataclass
 class RMDataArguments(BaseDataArguments):
     pass
+
+
+@dataclass
+class ALOLDataArguments(BaseDataArguments):
+    prompt_name: Optional[str] = field(default="prompt", metadata={"help": "The field corresponding to prompt."})
+    answer_name: Optional[str] = field(default="answer", metadata={"help": "The field corresponding to answer."})
+    weight_name: Optional[str] = field(default="weight", metadata={"help": "The field corresponding to data weight."})
+    advantage_name: Optional[str] = field(default="advantage", metadata={"help": "The field corresponding to advantage."})
+    
+    def __post_init__(self):
+        return super().__post_init__()

@@ -1,9 +1,12 @@
+from pathlib import Path
 from typing import List, Dict
+
+import datasets
+
 from .general_utils import print_rank_0, print_object_on_main_process
 from ..arguments import GenericDataArguments
-import datasets
 from src.algorithms.sft import sft_transform
-from pathlib import Path
+from src.algorithms.alol import alol_transform
 
 
 def load_dataset(data_args: GenericDataArguments, algorithm):
@@ -27,7 +30,8 @@ def load_dataset(data_args: GenericDataArguments, algorithm):
     # transform method
     TRANSFORM_MAP = {
         "sft": sft_transform(data_args),
-        "rm": None
+        "rm": None,
+        "alol": alol_transform(data_args)
     }
 
     if data_args.data_paths is not None:

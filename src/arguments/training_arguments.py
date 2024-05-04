@@ -1,6 +1,10 @@
-from dataclasses import dataclass, field
-import transformers
 from typing import Optional, List
+import warnings
+from dataclasses import dataclass, field
+
+import transformers
+from peft import LoraConfig
+
 
 @dataclass
 class BaseTrainingArguments(transformers.TrainingArguments):
@@ -19,7 +23,10 @@ class BaseTrainingArguments(transformers.TrainingArguments):
     kl_coef: Optional[float] = field(default=None, metadata={"help": "KL penalty weight."})
     kl_penalty_mode: Optional[str] = field(default='kl', metadata={"help": "KL penalty mode. One of ['kl', 'abs', 'mse', 'full']"})
     adaptive_kl_ctrl: Optional[bool] = field(default=False, metadata={"help": "Using adaptive KL controller."})
-    kl_target: Optional[float] = field(default=6., metadata={"help": "The expected KL divergence value. Effective when the KL controller is 'AdaptiveKLController'"})
+    kl_target: Optional[float] = field(default=6., metadata={"help": "The expected KL divergence value. Effective when the KL controller is 'AdaptiveKLController'."})
+
+    # peft
+    peft_config_path: Optional[str] = field(default=None, metadata={"help": "PEFT configuration path."})
 
 
     def __post_init__(self):
@@ -38,5 +45,12 @@ class RMTrainingArguments(BaseTrainingArguments):
 
 
 @dataclass
-class OfflinePPOTrainingArguments(BaseTrainingArguments):
-    pass
+class ALOLTrainingArguments(BaseTrainingArguments):
+    token_level: Optional[str] = field(default=False,
+                                metadata={"help": "Treat the generation of each token rather than the entire sentence as an action. \
+                                        Valid when kl_coeff is None, in which case kl divergence is not used to replace the importance weight."})
+                                        
+    clip_range: Optional[float] = field(default=0.2)
+
+    def __post_init__(self):
+        super().__post_init__()

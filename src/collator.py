@@ -1,19 +1,19 @@
 import torch
-from .arguments import SFTTrainingArguments, GenericTrainingArguments
-from transformers import PreTrainedTokenizer, TrainingArguments
-from typing import List, Dict
+from typing import List, Dict, Any, Callable
 from copy import deepcopy
+
+from transformers import PreTrainedTokenizer
 from torch.nn.utils.rnn import pad_sequence
 import torch.nn.functional as F
 from transformers.trainer_pt_utils import LabelSmoother
-from datasets import Dataset
-from random import sample
+
+from .arguments.training_arguments import BaseTrainingArguments, RMTrainingArguments, SFTTrainingArguments, ALOLTrainingArguments
 
 
 IGNORE_INDEX = LabelSmoother.ignore_index
 
 
-def _llm_tokenize(prompts: List[str], texts: List[str], tokenizer: PreTrainedTokenizer, args: GenericTrainingArguments) -> Dict[str, torch.Tensor]:
+def _llm_tokenize(prompts: List[str], texts: List[str], tokenizer: PreTrainedTokenizer, args: BaseTrainingArguments) -> Dict[str, torch.Tensor]:
     input_ids = []
     labels = []
     for prompt, text in zip(prompts, texts):
@@ -55,8 +55,8 @@ def _llm_tokenize(prompts: List[str], texts: List[str], tokenizer: PreTrainedTok
     }
     
 
-def classfication_data_collactor(tokenizer: PreTrainedTokenizer, args: TrainingArguments):
-    def collator(examples):
+def classfication_data_collator(tokenizer: PreTrainedTokenizer, args) -> Callable[[Dict[str, any]], Dict[str, torch.Tensor]]:
+    def collator(examples) -> Dict[str, torch.Tensor]:
         texts = []
         labels = []
         for example in examples:
@@ -74,13 +74,13 @@ def classfication_data_collactor(tokenizer: PreTrainedTokenizer, args: TrainingA
     return collator
         
 
-def multi_object_classification_data_collactor(tokenizer: PreTrainedTokenizer, args: TrainingArguments):
-    def collator(examples):
+def multi_object_classification_data_collator(tokenizer: PreTrainedTokenizer, args) -> Callable[[Dict[str, any]], Dict[str, torch.Tensor]]:
+    def collator(examples) -> Dict[str, torch.Tensor]:
         pass
 
-
-def reward_data_collactor(tokenizer: PreTrainedTokenizer, args: TrainingArguments):
-    def collator(examples: List[Dict[str, List]]):
+ 
+def reward_data_collator(tokenizer: PreTrainedTokenizer, args: RMTrainingArguments) -> Callable[[Dict[str, any]], Dict[str, torch.Tensor]]:
+    def collator(examples: List[Dict[str, List]]) -> Dict[str, torch.Tensor]:
         batch_size = len(examples)
         num_sample = max([len(example['texts']) for example in examples])
         all_texts = []
@@ -104,8 +104,8 @@ def reward_data_collactor(tokenizer: PreTrainedTokenizer, args: TrainingArgument
     return collator
 
     
-def sft_data_collator(tokenizer: PreTrainedTokenizer, args: SFTTrainingArguments):
-    def collator(examples):
+def sft_data_collator(tokenizer: PreTrainedTokenizer, args: SFTTrainingArguments) -> Callable[[Dict[str, any]], Dict[str, torch.Tensor]]:
+    def collator(examples) -> Dict[str, torch.Tensor]:
         texts = []
         prompts = []
         weights = []
@@ -122,8 +122,8 @@ def sft_data_collator(tokenizer: PreTrainedTokenizer, args: SFTTrainingArguments
     return collator
 
 
-def rjs_data_collactor(tokenizer: PreTrainedTokenizer, args: TrainingArguments):
-    def collator(examples):
+def rjs_data_collator(tokenizer: PreTrainedTokenizer, args) -> Callable[[Dict[str, any]], Dict[str, torch.Tensor]]:
+    def collator(examples) -> Dict[str, torch.Tensor]:
         best_texts: List[str] = []
         for example in examples:
             texts = example['texts']
@@ -147,8 +147,8 @@ def rjs_data_collactor(tokenizer: PreTrainedTokenizer, args: TrainingArguments):
     return collator
         
 
-def rrhf_data_collactor(tokenizer: PreTrainedTokenizer, args: TrainingArguments):
-    def collator(examples: List[Dict[str, List]]):
+def rrhf_data_collator(tokenizer: PreTrainedTokenizer, args) -> Callable[[Dict[str, any]], Dict[str, torch.Tensor]]:
+    def collator(examples: List[Dict[str, List]]) -> Dict[str, torch.Tensor]:
         all_texts: List[str] = []
         all_scores: List[float] = []
         batch_size = len(examples)
@@ -181,49 +181,25 @@ def rrhf_data_collactor(tokenizer: PreTrainedTokenizer, args: TrainingArguments)
         }
     
     return collator
-
     
-def weighted_data_collactor(tokenizer: PreTrainedTokenizer, args: TrainingArguments):
-    def collator(examples):
+    
+def alol_data_collator(tokenizer: PreTrainedTokenizer, args: ALOLTrainingArguments) -> Callable[[Dict[str, any]], Dict[str, torch.Tensor]]:
+    def collator(examples: List[Dict[str, Any]]) -> Dict[str, torch.Tensor]:
         texts = []
         prompts = []
-        scores = []
+        weights = []
+        advantages = []
         for example in examples:
             text = example['prompt'] + example['answer']
             texts.append(text)
             prompts.append(example['prompt'])
-            scores.append(example['score'])
+            weights.append(example['weight'])
+            advantages.append(example['advantage'])
 
         ret = _llm_tokenize(prompts, texts, tokenizer, args)
-        ret["scores"] = torch.tensor(scores)
+        ret['weight'] = torch.tensor(weights)
+        ret['advantage'] = torch.tensor(advantages)
         return ret
-    
-    return collator
 
-
-def kto_data_collactor(tokenizer: PreTrainedTokenizer, args: TrainingArguments, dataset: Dataset):
-    def collator(examples):
-        texts = []
-        kl_texts = []
-        kl_prompts = []
-        prompts = []
-        scores = []
-        for example in examples:
-            text = example['prompt'] + example['completion']
-            texts.append(text)
-            prompts.append(example['prompt'])
-            scores.append(example['score'])
-            kl_completions = sample(dataset['completion'], args.kto_num_of_kl_completions_per_prompt)
-            for completion in kl_completions:
-                kl_texts.append(example['prompt'] + completion)
-            kl_prompts.extend([example['prompt']] * args.kto_num_of_kl_completions_per_prompt)
-        
-        target = _llm_tokenize(prompts, texts, tokenizer, args)
-        kl = _llm_tokenize(kl_prompts, kl_completions, tokenizer, args)
-        target['scores'] = torch.tensor(scores)
-        return {
-            "target": target,
-            "kl": kl
-        }
     
     return collator

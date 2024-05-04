@@ -1,6 +1,12 @@
-import torch.distributed as dist
 import json
-from typing import List
+from typing import List, Dict, Callable, Tuple, Type
+
+import torch
+import torch.distributed as dist
+
+from src.algorithms.base import BaseTrainer
+from src.collator import sft_data_collator, alol_data_collator
+from src.algorithms import SFTTrainer, ALOLTrainer
 
 
 def is_main_process():
@@ -48,3 +54,12 @@ def read_json_or_jsonl_data(data_path: str) -> List:
     
     print_rank_0(f">>> totally load {len(data_list)} data from {data_path}.")
     return data_list
+
+    
+def get_collator_and_trainer(algorithm) -> Tuple[Callable[[Dict[str, any]], Dict[str, torch.Tensor]], Type[BaseTrainer]]:
+    MAP: Dict[str, Tuple[Callable[[Dict[str, any]], Dict[str, torch.Tensor]], Type[BaseTrainer]]] = {
+        "sft": (sft_data_collator, SFTTrainer),
+        "alol": (alol_data_collator, ALOLTrainer)
+    }
+
+    return MAP[algorithm]

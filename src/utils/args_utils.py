@@ -1,8 +1,8 @@
-from transformers import HfArgumentParser
-from ..arguments import SFTTrainingArguments, SFTDataArguments
-from ..arguments import RMDataArguments, RMTrainingArguments
 import argparse
 import sys
+from transformers import HfArgumentParser
+from ..arguments import (SFTTrainingArguments, SFTDataArguments, RMDataArguments, RMTrainingArguments,
+    ALOLDataArguments, ALOLTrainingArguments)
 from .general_utils import print_object_on_main_process
 
 
@@ -14,6 +14,7 @@ def get_args():
     subparsers = parser.add_subparsers(dest='algorithm', help="Select training algorithm")
     subparsers.add_parser('sft', help="Using SFT parser")
     subparsers.add_parser('rm', help="Using RM parser")
+    subparsers.add_parser('alol', help="Using ALOL parser")
 
     supported_algorithms = list(subparsers.choices.keys())
     # Some distributed training frameworks add additional argumes.
@@ -32,5 +33,7 @@ def get_args():
         subparser = HfArgumentParser((SFTTrainingArguments, SFTDataArguments))
     elif algorithm_args.algorithm == 'rm':
         subparser = HfArgumentParser((RMTrainingArguments, RMDataArguments))
+    elif algorithm_args.algorithm == 'alol':
+        subparser = HfArgumentParser((ALOLTrainingArguments, ALOLDataArguments))
 
     return algorithm_args.algorithm, subparser.parse_args_into_dataclasses(sys.argv[1:])

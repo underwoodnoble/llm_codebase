@@ -76,7 +76,7 @@ def load_rm_model(training_args: GenericTrainingArguments):
 
 
 def load_tokenizer_and_model(training_args: GenericTrainingArguments, algorithm: str):
-    if algorithm in ['sft']:
+    if algorithm in ['sft', 'alol']:
         tokenizer, model, ref_model = load_causal_lm(
             training_args,
             training_args.kl_coef is not None

@@ -1,11 +1,11 @@
 import json
 import os
-from datasets import Dataset
+
 from src.utils.args_utils import get_args
 from src.arguments import GenericDataArguments, GenericTrainingArguments
 from src.utils.data_utils import load_dataset
 from src.utils.model_utils import load_tokenizer_and_model
-from src.utils.general_utils import print_object_on_main_process
+from src.utils.general_utils import print_object_on_main_process, print_rank_0, get_collator_and_trainer
 
 
 def main(
@@ -25,21 +25,29 @@ def main(
     print_object_on_main_process("tokenizer", tokenizer)
     print_object_on_main_process("model", model)
 
+    
+    # Create PEFT model.
+    if training_args.peft_config_path is not None:
+        from peft import get_peft_model
+        from src.arguments.utils import load_peft_config_from_json
 
-    # Initialize Trainer
-    if algorithm == 'sft':
-        from src.algorithms.sft import SFTTrainer
-        from src.collator import sft_data_collator
-        trainer = SFTTrainer(
-            model=model,
-            ref_model=ref_model,
-            args=training_args,
-            data_collator=sft_data_collator(tokenizer, training_args),
-            train_dataset=train_dataset,
-            eval_dataset=eval_dataset,
-            tokenizer=tokenizer
-        )
+        peft_config = load_peft_config_from_json(training_args.peft_config_path)
+        model = get_peft_model(model, peft_config=peft_config)
+        print_rank_0('>' * 100)
+        model.print_trainable_parameters()
+        print_rank_0('>' * 100)
 
+
+    COLLATOR, TRAINER = get_collator_and_trainer(algorithm)
+    trainer = TRAINER(
+        model=model,
+        ref_model=ref_model,
+        args=training_args,
+        data_collator=COLLATOR,
+        train_dataset=train_dataset,
+        eval_dataset=eval_dataset,
+        tokenizer=tokenizer
+    )
     # Operation before training
     
 
@@ -47,9 +55,9 @@ def main(
     trainer.train()
     
     # Operation after training
-    # save model
+    ## save model
     trainer.save_model(output_dir=training_args.output_dir)
-    # save log
+    ## save log history
     with open(os.path.join(training_args.output_dir, 'log_history.txt'), 'w') as f:
         json.dump(trainer.state.log_history, f)
 
