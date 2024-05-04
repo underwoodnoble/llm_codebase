@@ -16,6 +16,8 @@ def alol_transform(data_args: ALOLDataArguments):
             "weight": example.get(data_args.weight_name, 1.0),
             "advantage": example.get(data_args.reward_name, 1.0)
         }
+    
+    return transform
 
 
 class ALOLTrainer(BaseTrainer):
