@@ -60,7 +60,7 @@ class ALOLTrainer(BaseTrainer):
             importance_weight = logprobs - ref_logprobs # (batch_size, seq_len-1)
             if not self.args.token_level:
                 importance_weight = importance_weight.sum(-1) # (batch_size)
-            cliped_importance_weight = torch.clip(torch.exp(importance_weight), min=-self.args.clip_range, max=self.args.clip_range)
+            cliped_importance_weight = torch.min(importance_weight, torch.clip(torch.exp(importance_weight), min=-self.args.clip_range, max=self.args.clip_range))
             loss = -inputs['advantage'] * cliped_importance_weight
             loss = loss if not self.args.token_level else loss.sum(-1)
         else:
