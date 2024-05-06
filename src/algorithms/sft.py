@@ -7,7 +7,6 @@ from .base import BaseTrainer
 from .utils import IGNORE_INDEX
 
 
-
 def sft_transform(data_args: SFTDataArguments):
     def transform(example: Dict[str, Any]):
         return {
@@ -20,7 +19,6 @@ def sft_transform(data_args: SFTDataArguments):
 
 class SFTTrainer(BaseTrainer):
     args: SFTTrainingArguments
-
 
     @staticmethod
     def logprobs_from_logits(logits: torch.Tensor, labels: torch.Tensor = None, gather: bool = True) -> torch.Tensor:
@@ -55,7 +53,6 @@ class SFTTrainer(BaseTrainer):
             else:
                 logprob = self.logprobs_from_logits(model_outputs.logits, labels=inputs['labels']) # (batch_size, seq_len-1)
                 ref_logprob = self.logprobs_from_logits(ref_model_outputs.logits, labels=inputs['labels']) # (batch_size, seq_len-1)
-            
             kl_divergence = self.compute_kl_divergence(logprob, ref_logprob, kl_penalty=self.args.kl_penalty_mode)
             # mask
             shift_labels = inputs['labels'][:, 1:]
@@ -67,11 +64,11 @@ class SFTTrainer(BaseTrainer):
             self.store_metrics({"kl": kl_divergence}, train_eval)
             self.store_metrics({"kl_coef": self.kl_contorller.value}, train_eval)
             self.kl_step_buffer.append(kl_divergence)
-            
+
             # compute final loss
             loss = model_outputs.loss + self.kl_contorller.value * kl_divergence
-        
         else:
             loss = model_outputs.loss
 
-        return (loss, model_outputs['logits']) if return_outputs else loss
+        loss = inputs['weight'] * loss
+        return (loss, model_outputs.logits) if return_outputs else loss
