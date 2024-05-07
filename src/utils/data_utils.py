@@ -1,12 +1,28 @@
 from pathlib import Path
-from typing import List, Dict
+from typing import List
+import json
 
 import datasets
 
-from .general_utils import print_rank_0, print_object_on_main_process
+from .general_utils import print_rank_0
 from ..arguments import GenericDataArguments
 from src.algorithms.sft import sft_transform
 from src.algorithms.alol import alol_transform
+
+
+def read_json_or_jsonl_data(data_path: str) -> List:
+    if data_path.endswith('json'):
+        with open(data_path, 'r') as f:
+            data_list = json.load(f)
+    elif data_path.endswith('jsonl'):
+        with open(data_path, 'r') as f:
+            lines = f.read().strip().split('\n')
+            data_list = [json.loads(l) for l in lines]
+    else:
+        raise ValueError("The data file must end with json or jsonl.")
+    
+    print_rank_0(f">>> totally load {len(data_list)} data from {data_path}.")
+    return data_list
 
 
 def load_dataset(data_args: GenericDataArguments, algorithm):
@@ -19,7 +35,6 @@ def load_dataset(data_args: GenericDataArguments, algorithm):
                 if data_path.suffix in ['.json', '.jsonl']:
                     all_data_paths.append(str(data_path))
         return all_data_paths
-
 
     def get_datasets(data_files: List[str]) -> List[datasets.Dataset]:
         return [
@@ -58,8 +73,7 @@ def load_dataset(data_args: GenericDataArguments, algorithm):
             )
         else:
             eval_dataset = {
-                Path(data_file).stem : ds.map(TRANSFORM_MAP[algorithm]) for data_file, ds in zip(data_files, eval_dataset)
+                Path(data_file).stem: ds.map(TRANSFORM_MAP[algorithm]) for data_file, ds in zip(data_files, eval_dataset)
             }
-
 
     return train_dataset, eval_dataset

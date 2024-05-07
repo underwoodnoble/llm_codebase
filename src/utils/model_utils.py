@@ -1,9 +1,14 @@
-from ..arguments import GenericTrainingArguments
+from typing import Dict, Callable, Tuple, Type
 from transformers import (AutoTokenizer, AutoModelForCausalLM,
     PreTrainedModel, PreTrainedTokenizer)
 from typing import Tuple, Optional
 import torch
+import torch
 from .general_utils import print_rank_0
+from ..arguments import GenericTrainingArguments
+from src.algorithms.base import BaseTrainer
+from src.collator import sft_data_collator, alol_data_collator
+from src.algorithms import SFTTrainer, ALOLTrainer
 
 
 def set_special_tokens(tokenizer: PreTrainedTokenizer, model: PreTrainedModel) -> None:
@@ -67,7 +72,7 @@ def load_causal_lm(
                             if training_args.ref_model_name_or_path else training_args.model_name_or_path)
     else:
         ref_model = None
-    
+
     return tokenizer, model, ref_model
 
 
@@ -81,7 +86,15 @@ def load_tokenizer_and_model(training_args: GenericTrainingArguments, algorithm:
             training_args,
             training_args.kl_coef is not None
         )
-    
     tokenizer.model_max_length = training_args.model_max_length
 
     return tokenizer, model, ref_model
+
+
+def get_collator_and_trainer(algorithm) -> Tuple[Callable[[Dict[str, any]], Dict[str, torch.Tensor]], Type[BaseTrainer]]:
+    MAP: Dict[str, Tuple[Callable[[Dict[str, any]], Dict[str, torch.Tensor]], Type[BaseTrainer]]] = {
+        "sft": (sft_data_collator, SFTTrainer),
+        "alol": (alol_data_collator, ALOLTrainer)
+    }
+
+    return MAP[algorithm]
