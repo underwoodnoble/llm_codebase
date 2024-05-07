@@ -42,13 +42,8 @@ class SFTTrainer(BaseTrainer):
         shift_labels = inputs['labels'][:, 1:]
         mask = torch.not_equal(shift_labels, IGNORE_INDEX)
         loss = -(logprob * mask).sum(dim=-1) / mask.sum(dim=-1)
-
         if self.args.kl_coef is not None:
-            with torch.no_grad():
-                ref_model_outputs = self.ref_model(
-                    input_ids=inputs['input_ids'],
-                    attention_mask=inputs['attention_mask']
-                )
+            ref_model_outputs = self.compute_ref_model_outputs(inputs['input_ids'], inputs['attention_mask'])
             # calculate logprob
             if self.args.kl_penalty_mode == 'full':
                 logprob = self.logprobs_from_logits(model_outputs.logits, gather=False) # (batch_size, seq_len-1, vocab_size)

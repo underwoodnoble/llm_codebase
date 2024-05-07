@@ -1,6 +1,8 @@
-import json
 from typing import List
+import random
 
+import numpy as np
+import torch
 import torch.distributed as dist
 
 
@@ -34,3 +36,13 @@ def print_object_on_main_process(name: str, obj: object, split_line_color="yello
     print_rank_0(">"*30 + name, color=split_line_color)
     print_rank_0(obj, color=object_color)
     print_rank_0(">"*30, color=split_line_color)
+
+    
+def set_seed(seed: int) -> None:
+    random.seed(seed)
+    np.random.seed(seed)
+    torch.manual_seed(seed)
+    if hasattr(torch, "xpu") and torch.xpu.is_available():
+        torch.xpu.manual_seed_all(seed)
+    else:
+        torch.cuda.manual_seed_all(seed)

@@ -25,11 +25,6 @@ class ALOLTrainer(BaseTrainer):
     """
     args: ALOLTrainingArguments
 
-    def _is_create_ref_model(self) -> bool:
-        """Always create reference model"""
-        return True
-
-
     @staticmethod
     def logprobs_from_logits(logits: torch.Tensor, labels: torch.Tensor = None, gather: bool = True) -> torch.Tensor:
         """

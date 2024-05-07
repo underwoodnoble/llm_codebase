@@ -1,5 +1,7 @@
 from typing import Union, Optional, List, Tuple, Callable, Dict, Literal, Any
+from copy import deepcopy
 from collections import defaultdict
+from contextlib import contextmanager
 
 from datasets import Dataset
 import torch
@@ -7,7 +9,7 @@ from torch import nn
 from transformers import (Trainer, PreTrainedModel,
     PreTrainedTokenizerBase, TrainerCallback, EvalPrediction)
 import deepspeed
-from copy import deepcopy
+from peft import PeftModel
 
 from .utils import IGNORE_INDEX, FixedKLController, AdaptiveKLController
 from ..arguments.training_arguments import BaseTrainingArguments
@@ -20,7 +22,7 @@ class BaseTrainer(Trainer):
     def __init__(
         self,
         model: Union[PreTrainedModel, nn.Module] = None,
-        ref_model: Union[PreTrainedModel, nn.Module] = None,
+        ref_model: Union[PreTrainedModel, nn.Module, PeftModel] = None,
         args: BaseTrainingArguments = None,
         data_collator: Optional[Callable] = None,
         train_dataset: Optional[Dataset] = None,
@@ -48,7 +50,7 @@ class BaseTrainer(Trainer):
 
         self._stored_metrics = defaultdict(lambda: defaultdict(list))
 
-        if self._is_create_ref_model():
+        if ref_model is not None:
             self.ref_model = ref_model
             for param in self.ref_model.parameters():
                 param.requires_grad = False
@@ -58,19 +60,12 @@ class BaseTrainer(Trainer):
             else:
                 self.ref_model = self.accelerator.prepare_model(self.ref_model, evaluation_mode=True)
             
-            # kl setting
-            if self.args.adaptive_kl_ctrl:
-                self.kl_contorller = AdaptiveKLController(self.args.kl_coef, self.args.kl_target)
-            else:
-                self.kl_contorller = FixedKLController(self.args.kl_coef)
-            self.kl_step_buffer = []
-    
-
-    def _is_create_ref_model(self) -> bool:
-        """
-        The function returns a boolean value that determines whether to create a reference model.
-        """
-        return self.args.kl_coef is not None
+        # kl setting
+        if self.args.adaptive_kl_ctrl:
+            self.kl_contorller = AdaptiveKLController(self.args.kl_coef, self.args.kl_target)
+        else:
+            self.kl_contorller = FixedKLController(self.args.kl_coef)
+        self.kl_step_buffer = []
     
 
     def _prepare_deepspeed(self, model: PreTrainedModel):
@@ -141,7 +136,16 @@ class BaseTrainer(Trainer):
         if kl_penalty == 'full':
             return nn.functional.kl_div(ref_logprob, logprob, log_target=True, reduction='none').sum(-1)
 
+
+    def compute_ref_model_outputs(self, input_ids, attention_mask):
+        with torch.no_grad():
+            if hasattr(self, "ref_model"):
+                    return self.ref_model(input_ids=input_ids, attention_mask=attention_mask)
+            else:
+                with self.accelerator.unwrap_model(self.model).disable_adapter():
+                    return self.model(input_ids=input_ids, attention_mask=attention_mask)
             
+
     def training_step(self, model: nn.Module, inputs: Dict[str, Union[torch.Tensor, Any]]) -> torch.Tensor:
         ret = super().training_step(model, inputs)
         if len(self.kl_step_buffer) != 0:

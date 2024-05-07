@@ -82,9 +82,13 @@ def load_rm_model(training_args: GenericTrainingArguments):
 
 def load_tokenizer_and_model(training_args: GenericTrainingArguments, algorithm: str):
     if algorithm in ['sft', 'alol']:
+        if algorithm == 'sft':
+            load_ref_model = training_args.kl_coef is not None and training_args.peft_config_path is None
+        elif algorithm == 'alol':
+            load_ref_model = training_args.peft_config_path is None
         tokenizer, model, ref_model = load_causal_lm(
             training_args,
-            training_args.kl_coef is not None
+            load_ref_model
         )
     tokenizer.model_max_length = training_args.model_max_length
 
