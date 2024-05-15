@@ -44,11 +44,7 @@ class ALOLTrainer(BaseTrainer):
             labels=inputs['labels']
         )
 
-        with torch.no_grad():
-            ref_model_outputs = model(
-                input_ids=inputs['input_ids'],
-                attention_mask=inputs['attention_mask']
-            )
+        ref_model_outputs = self.compute_ref_model_outputs(inputs['input_ids'], inputs['attention_mask'])
         if self.args.kl_coef is None:
             logprobs = self.logprobs_from_logits(model_outputs['logits'], inputs['labels'])
             ref_logprobs = self.logprobs_from_logits(ref_model_outputs['logits'], inputs['labels'])
