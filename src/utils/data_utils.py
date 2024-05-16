@@ -7,7 +7,7 @@ import datasets
 from .general_utils import print_rank_0
 from ..arguments import GenericDataArguments
 from src.algorithms.sft import sft_transform
-from src.algorithms.alol import alol_transform
+from src.algorithms.offline_ppo import alol_transform
 
 
 def read_json_or_jsonl_data(data_path: str) -> List:

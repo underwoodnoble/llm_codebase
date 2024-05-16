@@ -38,7 +38,7 @@ class RMDataArguments(BaseDataArguments):
 
 
 @dataclass
-class ALOLDataArguments(BaseDataArguments):
+class OfflinePPODataArguments(BaseDataArguments):
     prompt_name: Optional[str] = field(default="prompt", metadata={"help": "The field corresponding to prompt."})
     answer_name: Optional[str] = field(default="answer", metadata={"help": "The field corresponding to answer."})
     weight_name: Optional[str] = field(default="weight", metadata={"help": "The field corresponding to data weight."})

@@ -7,8 +7,8 @@ import torch
 from .general_utils import print_rank_0
 from ..arguments import GenericTrainingArguments
 from src.algorithms.base import BaseTrainer
-from src.collator import sft_data_collator, alol_data_collator
-from src.algorithms import SFTTrainer, ALOLTrainer
+from src.collator import sft_data_collator, offline_ppo_data_collator
+from src.algorithms import SFTTrainer, OfflinePPOTrainer
 
 
 def set_special_tokens(tokenizer: PreTrainedTokenizer, model: PreTrainedModel) -> None:
@@ -98,7 +98,7 @@ def load_tokenizer_and_model(training_args: GenericTrainingArguments, algorithm:
 def get_collator_and_trainer(algorithm) -> Tuple[Callable[[Dict[str, any]], Dict[str, torch.Tensor]], Type[BaseTrainer]]:
     MAP: Dict[str, Tuple[Callable[[Dict[str, any]], Dict[str, torch.Tensor]], Type[BaseTrainer]]] = {
         "sft": (sft_data_collator, SFTTrainer),
-        "alol": (alol_data_collator, ALOLTrainer)
+        "alol": (offline_ppo_data_collator, OfflinePPOTrainer)
     }
 
     return MAP[algorithm]

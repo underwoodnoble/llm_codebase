@@ -45,7 +45,7 @@ class RMTrainingArguments(BaseTrainingArguments):
 
 
 @dataclass
-class ALOLTrainingArguments(BaseTrainingArguments):
+class OfflinePPOTrainingArguments(BaseTrainingArguments):
     token_level: Optional[str] = field(default=False,
                                 metadata={"help": "Treat the generation of each token rather than the entire sentence as an action. \
                                         Valid when kl_coeff is None, in which case kl divergence is not used to replace the importance weight."})

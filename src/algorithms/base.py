@@ -96,7 +96,6 @@ class BaseTrainer(Trainer):
         model.eval()
         return model
 
-    
     @staticmethod
     def logprobs_from_logits(logits: torch.Tensor, labels: torch.Tensor = None, gather: bool = True) -> torch.Tensor:
         """

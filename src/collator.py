@@ -183,7 +183,7 @@ def rrhf_data_collator(tokenizer: PreTrainedTokenizer, args) -> Callable[[Dict[s
     return collator
     
     
-def alol_data_collator(tokenizer: PreTrainedTokenizer, args: ALOLTrainingArguments) -> Callable[[Dict[str, any]], Dict[str, torch.Tensor]]:
+def offline_ppo_data_collator(tokenizer: PreTrainedTokenizer, args: ALOLTrainingArguments) -> Callable[[Dict[str, any]], Dict[str, torch.Tensor]]:
     def collator(examples: List[Dict[str, Any]]) -> Dict[str, torch.Tensor]:
         texts = []
         prompts = []
