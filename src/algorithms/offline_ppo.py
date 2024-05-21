@@ -56,11 +56,11 @@ class OfflinePPOTrainer(BaseTrainer):
         else:
             logprobs = self.logprobs_from_logits(model_outputs.logits, labels=inputs['labels']) # (batch_size, seq_len-1)
             ref_logprobs = self.logprobs_from_logits(ref_model_outputs.logits, labels=inputs['labels']) # (batch_size, seq_len-1)           
-            importance_weight = (logprobs - ref_logprobs).exp()
+            importance_ratio = (logprobs - ref_logprobs).exp()
 
         kl_divergence = self.compute_kl_divergence(logprobs, ref_logprobs, kl_penalty=self.args.kl_penalty_mode) # (batch_size, seq_len-1)
         cliped_importance_weight = \
-            torch.min(importance_weight, torch.clip(torch.exp(importance_weight), min=-self.args.clip_range, max=self.args.clip_range))
+            torch.min(importance_weight, torch.clip(importance_ratio, min=-self.args.clip_range, max=self.args.clip_range))
         loss = -(inputs['advantage'] - kl_divergence) * mask * cliped_importance_weight
         loss = loss.sum(-1)
 
