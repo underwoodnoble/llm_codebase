@@ -7,7 +7,7 @@ from torch.nn.utils.rnn import pad_sequence
 import torch.nn.functional as F
 from transformers.trainer_pt_utils import LabelSmoother
 
-from .arguments.training_arguments import BaseTrainingArguments, RMTrainingArguments, SFTTrainingArguments, ALOLTrainingArguments
+from .arguments.training_arguments import BaseTrainingArguments, RMTrainingArguments, SFTTrainingArguments, OfflinePPOTrainingArguments
 
 
 IGNORE_INDEX = LabelSmoother.ignore_index
@@ -183,7 +183,7 @@ def rrhf_data_collator(tokenizer: PreTrainedTokenizer, args) -> Callable[[Dict[s
     return collator
     
     
-def offline_ppo_data_collator(tokenizer: PreTrainedTokenizer, args: ALOLTrainingArguments) -> Callable[[Dict[str, any]], Dict[str, torch.Tensor]]:
+def offline_ppo_data_collator(tokenizer: PreTrainedTokenizer, args: OfflinePPOTrainingArguments) -> Callable[[Dict[str, any]], Dict[str, torch.Tensor]]:
     def collator(examples: List[Dict[str, Any]]) -> Dict[str, torch.Tensor]:
         texts = []
         prompts = []

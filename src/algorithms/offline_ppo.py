@@ -8,7 +8,7 @@ from .utils import IGNORE_INDEX
 from ..arguments import OfflinePPOTrainingArguments, OfflinePPODataArguments
 
 
-def offlie_ppo_transform(data_args: OfflinePPODataArguments):
+def offline_ppo_transform(data_args: OfflinePPODataArguments):
     def transform(example: Dict[str, Any]):
         return {
             "prompt": example[data_args.prompt_name],

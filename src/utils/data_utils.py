@@ -7,7 +7,7 @@ import datasets
 from .general_utils import print_rank_0
 from ..arguments import GenericDataArguments
 from src.algorithms.sft import sft_transform
-from src.algorithms.offline_ppo import alol_transform
+from src.algorithms.offline_ppo import offline_ppo_transform
 
 
 def read_json_or_jsonl_data(data_path: str) -> List:
@@ -46,7 +46,7 @@ def load_dataset(data_args: GenericDataArguments, algorithm):
     TRANSFORM_MAP = {
         "sft": sft_transform(data_args),
         "rm": None,
-        "alol": alol_transform(data_args)
+        "alol": offline_ppo_transform(data_args)
     }
 
     if data_args.data_paths is not None:

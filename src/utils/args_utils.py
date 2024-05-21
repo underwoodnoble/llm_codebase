@@ -2,7 +2,7 @@ import argparse
 import sys
 from transformers import HfArgumentParser
 from ..arguments import (SFTTrainingArguments, SFTDataArguments, RMDataArguments, RMTrainingArguments,
-    ALOLDataArguments, ALOLTrainingArguments)
+    OfflinePPODataArguments, OfflinePPOTrainingArguments)
 from .general_utils import print_object_on_main_process
 
 
@@ -33,7 +33,7 @@ def get_args():
         subparser = HfArgumentParser((SFTTrainingArguments, SFTDataArguments))
     elif algorithm_args.algorithm == 'rm':
         subparser = HfArgumentParser((RMTrainingArguments, RMDataArguments))
-    elif algorithm_args.algorithm == 'alol':
-        subparser = HfArgumentParser((ALOLTrainingArguments, ALOLDataArguments))
+    elif algorithm_args.algorithm == 'offline_ppo':
+        subparser = HfArgumentParser((OfflinePPOTrainingArguments, OfflinePPODataArguments))
 
     return algorithm_args.algorithm, subparser.parse_args_into_dataclasses(sys.argv[1:])
