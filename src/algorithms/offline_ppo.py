@@ -51,7 +51,7 @@ class OfflinePPOTrainer(BaseTrainer):
         if self.args.kl_penalty_mode == 'full':
             logprobs = self.logprobs_from_logits(model_outputs.logits, gather=False) # (batch_size, seq_len-1, vocab_size)
             ref_logprobs = self.logprobs_from_logits(ref_model_outputs.logits, gather=False)
-            importance_weight = (torch.gather(logprobs, 2, (shift_labels * mask).unsqueeze(2)).squeeze(-1) - \
+            importance_ratio = (torch.gather(logprobs, 2, (shift_labels * mask).unsqueeze(2)).squeeze(-1) - \
                 torch.gather(ref_logprobs, 2, (shift_labels * mask).unsqueeze(2)).squeeze(-1)).exp()
         else:
             logprobs = self.logprobs_from_logits(model_outputs.logits, labels=inputs['labels']) # (batch_size, seq_len-1)
