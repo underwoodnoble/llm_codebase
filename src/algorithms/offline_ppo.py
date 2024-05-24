@@ -14,7 +14,7 @@ def offline_ppo_transform(data_args: OfflinePPODataArguments):
             "prompt": example[data_args.prompt_name],
             "answer": example[data_args.answer_name],
             "weight": example.get(data_args.weight_name, 1.0),
-            "advantage": example.get(data_args.reward_name, 1.0)
+            "reward": example.get(data_args.reward_name, 1.0)
         }
     
     return transform
@@ -60,7 +60,7 @@ class OfflinePPOTrainer(BaseTrainer):
 
         kl_divergence = self.compute_kl_divergence(logprobs, ref_logprobs, kl_penalty=self.args.kl_penalty_mode) # (batch_size, seq_len-1)
         cliped_importance_weight = torch.clip(importance_ratio, min=-self.args.clip_range, max=self.args.clip_range)
-        loss = -(inputs['advantage'] - self.args.kl_coef * kl_divergence) * mask * cliped_importance_weight
+        loss = -(inputs['reward'] - self.args.kl_coef * kl_divergence) * mask * cliped_importance_weight
         loss = loss.sum(-1)
 
         return (loss, model_outputs.logits) if return_outputs else loss

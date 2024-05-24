@@ -194,11 +194,11 @@ def offline_ppo_data_collator(tokenizer: PreTrainedTokenizer, args: OfflinePPOTr
             texts.append(text)
             prompts.append(example['prompt'])
             weights.append(example['weight'])
-            advantages.append(example['advantage'])
+            advantages.append(example['reward'])
 
         ret = _llm_tokenize(prompts, texts, tokenizer, args)
         ret['weight'] = torch.tensor(weights)
-        ret['advantage'] = torch.tensor(advantages)
+        ret['reward'] = torch.tensor(advantages)
         return ret
 
     
