@@ -183,22 +183,26 @@ def rrhf_data_collator(tokenizer: PreTrainedTokenizer, args) -> Callable[[Dict[s
     return collator
     
     
-def offline_ppo_data_collator(tokenizer: PreTrainedTokenizer, args: OfflinePPOTrainingArguments) -> Callable[[Dict[str, any]], Dict[str, torch.Tensor]]:
+def offline_ppo_data_collator(
+    tokenizer: PreTrainedTokenizer,
+    args: OfflinePPOTrainingArguments):
     def collator(examples: List[Dict[str, Any]]) -> Dict[str, torch.Tensor]:
-        texts = []
         prompts = []
+        texts = []
+        rewards = []
         weights = []
-        advantages = []
+        lm_mask = []
         for example in examples:
-            text = example['prompt'] + example['answer']
-            texts.append(text)
             prompts.append(example['prompt'])
+            texts.append(example['prompt'] + example['answer'])
+            rewards.append(example['reward'])
             weights.append(example['weight'])
-            advantages.append(example['reward'])
+            lm_mask.append(int(example == 'lm'))
 
         ret = _llm_tokenize(prompts, texts, tokenizer, args)
-        ret['weight'] = torch.tensor(weights)
-        ret['reward'] = torch.tensor(advantages)
+        ret['rewards'] = torch.tensor(rewards)
+        ret['weights'] = torch.tensor(weights)
+        ret['lm_mask'] = torch.tensor(lm_mask)
         return ret
 
     

@@ -81,10 +81,10 @@ def load_rm_model(training_args: GenericTrainingArguments):
 
 
 def load_tokenizer_and_model(training_args: GenericTrainingArguments, algorithm: str):
-    if algorithm in ['sft', 'alol']:
+    if algorithm in ['sft', 'offline_ppo']:
         if algorithm == 'sft':
             load_ref_model = training_args.kl_coef is not None and training_args.peft_config_path is None
-        elif algorithm == 'alol':
+        elif algorithm == 'offline_ppo':
             load_ref_model = training_args.peft_config_path is None
         tokenizer, model, ref_model = load_causal_lm(
             training_args,
@@ -98,7 +98,7 @@ def load_tokenizer_and_model(training_args: GenericTrainingArguments, algorithm:
 def get_collator_and_trainer(algorithm) -> Tuple[Callable[[Dict[str, any]], Dict[str, torch.Tensor]], Type[BaseTrainer]]:
     MAP: Dict[str, Tuple[Callable[[Dict[str, any]], Dict[str, torch.Tensor]], Type[BaseTrainer]]] = {
         "sft": (sft_data_collator, SFTTrainer),
-        "alol": (offline_ppo_data_collator, OfflinePPOTrainer)
+        "offline_ppo": (offline_ppo_data_collator, OfflinePPOTrainer)
     }
 
     return MAP[algorithm]

@@ -14,7 +14,7 @@ def get_args():
     subparsers = parser.add_subparsers(dest='algorithm', help="Select training algorithm")
     subparsers.add_parser('sft', help="Using SFT parser")
     subparsers.add_parser('rm', help="Using RM parser")
-    subparsers.add_parser('alol', help="Using ALOL parser")
+    subparsers.add_parser('offline_ppo', help="Using offline ppo parser")
 
     supported_algorithms = list(subparsers.choices.keys())
     # Some distributed training frameworks add additional argumes.

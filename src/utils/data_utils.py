@@ -46,7 +46,7 @@ def load_dataset(data_args: GenericDataArguments, algorithm):
     TRANSFORM_MAP = {
         "sft": sft_transform(data_args),
         "rm": None,
-        "alol": offline_ppo_transform(data_args)
+        "offline_ppo": offline_ppo_transform(data_args)
     }
 
     if data_args.data_paths is not None:

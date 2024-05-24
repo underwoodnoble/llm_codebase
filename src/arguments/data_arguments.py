@@ -42,7 +42,8 @@ class OfflinePPODataArguments(BaseDataArguments):
     prompt_name: Optional[str] = field(default="prompt", metadata={"help": "The field corresponding to prompt."})
     answer_name: Optional[str] = field(default="answer", metadata={"help": "The field corresponding to answer."})
     weight_name: Optional[str] = field(default="weight", metadata={"help": "The field corresponding to data weight."})
-    advantage_name: Optional[str] = field(default="advantage", metadata={"help": "The field corresponding to advantage."})
+    reward_name: Optional[str] = field(default="advantage", metadata={"help": "The field corresponding to reward."})
+    data_type_name: Optional[str] = field(default="type", metadata={"help": "The field corresponding to data type. (rl or lm)"})
     
     def __post_init__(self):
         return super().__post_init__()

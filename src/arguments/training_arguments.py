@@ -46,7 +46,8 @@ class RMTrainingArguments(BaseTrainingArguments):
 
 @dataclass
 class OfflinePPOTrainingArguments(BaseTrainingArguments):
-    clip_range: Optional[float] = field(default=0.2)
+    clip_range: float = field(default=0.2)
+    lm_coef: float = field(default=0.5)
 
     def __post_init__(self):
         super().__post_init__()
