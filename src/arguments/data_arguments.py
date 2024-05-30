@@ -5,7 +5,7 @@ from pathlib import Path
 
 @dataclass
 class BaseDataArguments:
-    data_paths: Optional[List[Path]] = field(default=None, metadata={"help": "Training dataset files or dirs."})
+    data_paths: List[Path] = field(default=None, metadata={"help": "Training dataset files or dirs."})
     eval_data_paths: Optional[List[Path]] = field(default=None, metadata={"help": "evaluation dataset files or dirs."})
     eval_dataset_merge_mode: str = field(
         default='separate',
@@ -19,7 +19,6 @@ class BaseDataArguments:
     def __post_init__(self):
         if self.data_paths is None and self.eval_data_paths is None:
             raise ValueError("data_paths and eval_data_paths must have at least one that is not None")
-
 
 @dataclass
 class SFTDataArguments(BaseDataArguments):
@@ -42,7 +41,7 @@ class OfflinePPODataArguments(BaseDataArguments):
     prompt_name: Optional[str] = field(default="prompt", metadata={"help": "The field corresponding to prompt."})
     answer_name: Optional[str] = field(default="answer", metadata={"help": "The field corresponding to answer."})
     weight_name: Optional[str] = field(default="weight", metadata={"help": "The field corresponding to data weight."})
-    reward_name: Optional[str] = field(default="advantage", metadata={"help": "The field corresponding to reward."})
+    reward_name: Optional[str] = field(default="reward", metadata={"help": "The field corresponding to reward."})
     data_type_name: Optional[str] = field(default="type", metadata={"help": "The field corresponding to data type. (rl or lm)"})
     
     def __post_init__(self):

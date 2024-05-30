@@ -12,7 +12,8 @@ import deepspeed
 from peft import PeftModel
 
 from .utils import IGNORE_INDEX, FixedKLController, AdaptiveKLController
-from ..arguments.training_arguments import BaseTrainingArguments
+from ..arguments.training_arguments import BaseTrainingArguments, BaseLLMTrainingArguments
+from ..utils.general_utils import print_object_on_main_process
 
 
 class BaseTrainer(Trainer):
@@ -111,8 +112,7 @@ class BaseTrainer(Trainer):
         return logpy
 
         
-    @staticmethod
-    def compute_kl_divergence(logprob: torch.FloatTensor, ref_logprob: torch.FloatTensor, kl_penalty='kl') -> torch.FloatTensor:
+    def kl_divergence_form_logprobs(self, logprobs: torch.FloatTensor, ref_logprobs: torch.FloatTensor) -> torch.FloatTensor:
         """
         if kl_penalty is not 'full'
         logprob: (batch_size, seq_len)
@@ -123,17 +123,18 @@ class BaseTrainer(Trainer):
 
         output: (batch_size, seq_len)
         """
+        kl_penalty = self.args.kl_penalty_mode
         if kl_penalty == 'kl':
-            return logprob - ref_logprob
+            return logprobs - ref_logprobs
         
         if kl_penalty == 'abs':
-            return (logprob - ref_logprob).abs()
+            return (logprobs - ref_logprobs).abs()
         
         if kl_penalty == 'mse':
-            return 0.5 * (logprob - ref_logprob).square()
+            return 0.5 * (logprobs - ref_logprobs).square()
         
         if kl_penalty == 'full':
-            return nn.functional.kl_div(ref_logprob, logprob, log_target=True, reduction='none').sum(-1)
+            return nn.functional.kl_div(ref_logprobs, logprobs, log_target=True, reduction='none').sum(-1)
 
 
     def compute_ref_model_outputs(self, input_ids, attention_mask):
@@ -168,3 +169,37 @@ class BaseTrainer(Trainer):
             logs[key] = torch.tensor(metrics).mean().item()
         del self._stored_metrics[train_eval]
         return super().log(logs)
+    
+
+class BaseLLMTrainer(BaseTrainer):
+    args: BaseLLMTrainingArguments
+    
+    
+    def compute_kl_divergence(self, logits: torch.FloatTensor,
+                              ref_logits: torch.FloatTensor,
+                              labels: torch.Tensor):
+        """
+        logits: (batch_size, seq_len, vocab_size)
+        ref_logits: (batch_size, seq_len, vocab_size)
+        labels: (batch_size, seq_len)
+        output: (batch_size, seq_len-1) if token_level else (batch_size)
+        """
+        shift_logits = logits[:, :-1, :]
+        shift_ref_logits = ref_logits[:, :-1, :]
+        shift_labels = labels[:, 1:]
+        mask = torch.not_equal(shift_labels, IGNORE_INDEX)        
+        if self.args.token_level:
+        # calculate token level kl
+            if self.args.kl_penalty_mode == 'full':
+                logprobs = self.logprobs_from_logits(shift_logits, gather=False) # (batch_size, seq_len-1, vocab_size)
+                ref_logprobs = self.logprobs_from_logits(shift_ref_logits, gather=False) # (batch_size, seq_len-1, vocab_size)
+            else:
+                logprobs = self.logprobs_from_logits(shift_logits, shift_labels)
+                ref_logprobs = self.logprobs_from_logits(shift_ref_logits, shift_labels)
+            return self.kl_divergence_form_logprobs(logprobs, ref_logprobs) * mask
+        else:
+        # calculate sentence level kl
+            logprobs = self.logprobs_from_logits(shift_logits, shift_labels) # (batch_size, seq_len-1)
+            ref_logprobs = self.logprobs_from_logits(shift_ref_logits, shift_labels) # (batch_size, seq_len-1)
+            return (logprobs * mask).sum(-1) / mask.sum(-1) - (ref_logprobs * mask).sum(-1) / mask.sum(-1)
+        
