@@ -166,8 +166,11 @@ class BaseTrainer(Trainer):
     def log(self, logs: Dict[str, float]) -> None:
         train_eval = "train" if "loss" in logs else "eval"
         for key, metrics in self._stored_metrics[train_eval].items():
-            logs[key] = torch.tensor(metrics).mean().item()
-        del self._stored_metrics[train_eval]
+            if len(metrics) == 0:
+                logs[key] = 0.0
+            else:
+                logs[key] = torch.tensor(metrics).mean().item()
+                self._stored_metrics[train_eval][key] = []
         return super().log(logs)
     
 
