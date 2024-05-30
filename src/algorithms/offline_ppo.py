@@ -30,25 +30,22 @@ class OfflinePPOTrainer(BaseLLMTrainer):
 
 
     def compute_loss(self, model: nn.Module, inputs: Dict[str, torch.Tensor], return_outputs=False):
-        input_ids = inputs['input_ids']
-        attention_mask = inputs['attention_mask']
-        labels = inputs['labels']
         rewards = inputs['rewards']
         weights = inputs['weights']
         lm_mask = inputs['lm_mask']
         
         # Calculate model outputs
         model_outputs = model(
-            input_ids=input_ids,
-            attention_mask=attention_mask,
+            input_ids=inputs['input_ids'],
+            attention_mask=inputs['attention_mask'],
         )
 
         # Calculate ref model outputs
         ref_model_outputs = self.compute_ref_model_outputs(
-            input_ids=input_ids,
-            attention_mask=attention_mask)
+            input_ids=inputs['input_ids'],
+            attention_mask=inputs['attention_mask'])
 
-        shift_labels = labels[:, 1:]
+        shift_labels = inputs['labels'][:, 1:]
         shift_logits = model_outputs.logits[:, :-1, :]
         shift_ref_logits = ref_model_outputs.logits[:, :-1, :]
         mask = torch.ne(shift_labels, IGNORE_INDEX)
@@ -58,7 +55,7 @@ class OfflinePPOTrainer(BaseLLMTrainer):
         # kl_divergence = self.compute_kl_divergence(model_outputs.logits.detach(), ref_model_outputs.logits, labels) 
 
         # kl_divergence: (batch_size, seq_len-1) if token_level else (batch_size)
-        kl_divergence = self.compute_kl_divergence(model_outputs.logits.detach(), ref_model_outputs.logits, labels)
+        kl_divergence = self.compute_kl_divergence(model_outputs.logits.detach(), ref_model_outputs.logits, inputs['labels'])
 
         
         advantage = rewards - self.args.kl_coef * kl_divergence # (batch_size, seq_len-1) if token_level else (batch_size)
@@ -73,6 +70,7 @@ class OfflinePPOTrainer(BaseLLMTrainer):
             rl_loss = rl_loss.mean(-1) # (batch_size)
         else:
             importance_ratio = (logprobs * mask).sum(-1) / mask.sum(-1) - (ref_logprobs * mask).sum(-1) / mask.sum(-1) # (batch_size)
+            importance_ratio = importance_ratio.exp()
             cliped_importance_ratio = torch.clip(importance_ratio, 1 - self.args.clip_range, 1 + self.args.clip_range) # (batch_size)
             rl_loss = -advantage * cliped_importance_ratio # (batch_size)
         rl_loss = (rl_loss * (1 - lm_mask) * weights).sum() / max((1 - lm_mask).sum(), 1)
@@ -88,6 +86,7 @@ class OfflinePPOTrainer(BaseLLMTrainer):
         self.store_metrics({"kl_coef": self.kl_contorller.value}, train_eval)
         positive_mask = (rewards > 0) * (1 - lm_mask)
         negative_mask = (rewards < 0) * (1 - lm_mask)
+        print(f"rewards: {rewards}  ", f"lm_mask: {lm_mask}  ", f"postive_mask: {positive_mask}  ", f"negative_mask: {negative_mask}")
         if positive_mask.any():
             self.store_metrics({"kl_positive": (kl_divergence * positive_mask).sum() / positive_mask.sum()})
         if negative_mask.any():
@@ -96,7 +95,7 @@ class OfflinePPOTrainer(BaseLLMTrainer):
             self.store_metrics({"rl_loss": rl_loss})
         if lm_mask.any():
             self.store_metrics({"kl_lm": (kl_divergence * lm_mask).sum() / lm_mask.sum()})
-            self.store_metrics({f"lm_loss": lm_loss})
+            self.store_metrics({"lm_loss": lm_loss})
         
         # store current kl
         self.kl_step_buffer.append(kl_divergence.mean().item())

@@ -197,7 +197,7 @@ def offline_ppo_data_collator(
             texts.append(example['prompt'] + example['answer'])
             rewards.append(example['reward'])
             weights.append(example['weight'])
-            lm_mask.append(int(example == 'lm'))
+            lm_mask.append(int(example['data_type'] == 'lm'))
 
         ret = _llm_tokenize(prompts, texts, tokenizer, args)
         ret['rewards'] = torch.tensor(rewards)
