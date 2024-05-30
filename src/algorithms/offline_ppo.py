@@ -65,8 +65,6 @@ class OfflinePPOTrainer(BaseLLMTrainer):
         logprobs = self.logprobs_from_logits(shift_logits, shift_labels) # (batch_size ,seq_len-1)
         ref_logprobs = self.logprobs_from_logits(shift_ref_logits, shift_labels) # (batch_size ,seq_len-1)
         
-        print_rank_0(f"logprobs requires_grad: {logprobs.requires_grad}")
-
         # Calculate rl loss
         if self.args.token_level:
             importance_ratio = (logprobs - ref_logprobs).exp() # (batch_size, seq_len-1)
@@ -75,12 +73,9 @@ class OfflinePPOTrainer(BaseLLMTrainer):
             rl_loss = rl_loss.mean(-1) # (batch_size)
         else:
             importance_ratio = (logprobs * mask).sum(-1) / mask.sum(-1) - (ref_logprobs * mask).sum(-1) / mask.sum(-1) # (batch_size)
-            print_rank_0(f"importance ratio requires_grad: {importance_ratio.requires_grad}")
             cliped_importance_ratio = torch.clip(importance_ratio, 1 - self.args.clip_range, 1 + self.args.clip_range) # (batch_size)
-            print_rank_0(f"cliped_importance ratio requires_grad: {cliped_importance_ratio.requires_grad}")
             rl_loss = -advantage * cliped_importance_ratio # (batch_size)
         rl_loss = (rl_loss * (1 - lm_mask) * weights).sum() / max((1 - lm_mask).sum(), 1)
-        print_rank_0(f"rl_loss requires_grad: {rl_loss.requires_grad}")
 
         # Calculate lm loss
         lm_loss = (logprobs * mask).sum(-1) / mask.sum(-1)
@@ -88,7 +83,6 @@ class OfflinePPOTrainer(BaseLLMTrainer):
 
         loss = rl_loss + self.args.lm_coef * lm_loss
         # log
-        print(kl_divergence)
         train_eval = 'train' if model.training else 'eval'
         self.store_metrics({"kl": kl_divergence.mean().item()}, train_eval)
         self.store_metrics({"kl_coef": self.kl_contorller.value}, train_eval)
