@@ -76,7 +76,7 @@ class OfflinePPOTrainer(BaseLLMTrainer):
         rl_loss = (rl_loss * (1 - lm_mask) * weights).sum() / max((1 - lm_mask).sum(), 1)
 
         # Calculate lm loss
-        lm_loss = (logprobs * mask).sum(-1) / mask.sum(-1)
+        lm_loss = -(logprobs * mask).sum(-1) / mask.sum(-1)
         lm_loss = (lm_loss * lm_mask * weights).sum() / max(lm_mask.sum(), 1)
 
         loss = rl_loss + self.args.lm_coef * lm_loss
@@ -86,7 +86,10 @@ class OfflinePPOTrainer(BaseLLMTrainer):
         self.store_metrics({"kl_coef": self.kl_contorller.value}, train_eval)
         positive_mask = (rewards > 0) * (1 - lm_mask)
         negative_mask = (rewards < 0) * (1 - lm_mask)
-        print(f"rewards: {rewards}  ", f"lm_mask: {lm_mask}  ", f"postive_mask: {positive_mask}  ", f"negative_mask: {negative_mask}")
+        
+        if self.args.debug_mode:
+            print(f"rewards: {rewards}  ", f"lm_mask: {lm_mask}  ", f"postive_mask: {positive_mask}  ", f"negative_mask: {negative_mask}")
+
         if positive_mask.any():
             self.store_metrics({"kl_positive": (kl_divergence * positive_mask).sum() / positive_mask.sum()})
         if negative_mask.any():
