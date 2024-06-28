@@ -40,6 +40,12 @@ def main(
 
 
     COLLATOR, TRAINER = get_collator_and_trainer(algorithm)
+    
+    compute_metrics = None
+    if algorithm == 'rm':
+        from src.metrics import compute_reward_metrics
+        compute_metrics = lambda x: compute_reward_metrics(training_args, x)
+
     trainer = TRAINER(
         model=model,
         ref_model=ref_model,
@@ -47,7 +53,8 @@ def main(
         data_collator=COLLATOR(tokenizer, training_args),
         train_dataset=train_dataset,
         eval_dataset=eval_dataset,
-        tokenizer=tokenizer
+        tokenizer=tokenizer,
+        compute_metrics=compute_metrics
     )
     # Operation before training
     
