@@ -1,17 +1,20 @@
+import json
+import time
+
 from argparse import ArgumentParser
 from typing import List
-from src.utils import getTestDataset, loadTestTokenizerAndModel, is_main_process
+from tqdm import tqdm
+from concurrent.futures import ThreadPoolExecutor
+
+import torch
 from accelerate import PartialState
 from accelerate.utils import gather_object
-from torch.utils.data import DataLoader
 from datasets import Dataset
-from src.test import compute_ppl, gpt_winer, compute_preference_confidence, compute_ece
-import json
-from tqdm import tqdm
-import torch
-from concurrent.futures import ThreadPoolExecutor
-import time
-from src.collator import reward_data_collactor
+from torch.utils.data import DataLoader
+
+from src.utils import getTestDataset, loadTestTokenizerAndModel, is_main_process
+from src.test import compute_ppl, compute_preference_confidence, compute_ece, gpt_winer
+from src.algorithms import rm_data_collator
 
 def get_args():
     parser = ArgumentParser()
@@ -161,7 +164,7 @@ def expected_calibration_error(args):
         sub_truth = []
         with distributed_state.split_between_processes(dataset[i:i+args.cache_size]) as sub_dataset:
             sub_dataset = Dataset.from_list(sub_dataset)
-            data_loader = DataLoader(sub_dataset, batch_size=args.batch_size, collate_fn=reward_data_collactor(tokenizer))
+            data_loader = DataLoader(sub_dataset, batch_size=args.batch_size, collate_fn=rm_data_collator(tokenizer))
             for batch in data_loader:
                 preds, truth = compute_preference_confidence(batch, tokenizer, model)
                 sub_preds.extend(preds)
