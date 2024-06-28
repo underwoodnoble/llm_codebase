@@ -7,7 +7,6 @@ import torch
 from .general_utils import print_rank_0
 from ..arguments import GenericTrainingArguments
 from src.algorithms.base import BaseTrainer
-from src.collator import offline_ppo_data_collator
 from src.algorithms import SFTTrainer, OfflinePPOTrainer, RMTrainer, sft_data_collator, offline_ppo_data_collator, rm_data_collator
 
 
