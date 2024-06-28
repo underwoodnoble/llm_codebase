@@ -1,13 +1,13 @@
-from typing import Dict, Any
+from typing import Dict, Any, List
 
 import torch
 from torch import nn
+from transformers import PreTrainedTokenizer
 
 from .base import BaseLLMTrainer
-from .utils import IGNORE_INDEX
+from .utils import IGNORE_INDEX, llm_tokenize
 from ..arguments import OfflinePPOTrainingArguments, OfflinePPODataArguments
 from ..utils.general_utils import print_rank_0
-
 
 
 def offline_ppo_transform(data_args: OfflinePPODataArguments):
@@ -21,6 +21,32 @@ def offline_ppo_transform(data_args: OfflinePPODataArguments):
             }
     
     return transform
+
+
+def offline_ppo_data_collator(
+    tokenizer: PreTrainedTokenizer,
+    args: OfflinePPOTrainingArguments):
+    def collator(examples: List[Dict[str, Any]]) -> Dict[str, torch.Tensor]:
+        prompts = []
+        texts = []
+        rewards = []
+        weights = []
+        lm_mask = []
+        for example in examples:
+            prompts.append(example['prompt'])
+            texts.append(example['prompt'] + example['answer'])
+            rewards.append(example['reward'])
+            weights.append(example['weight'])
+            lm_mask.append(int(example['data_type'] == 'lm'))
+
+        ret = llm_tokenize(prompts, texts, tokenizer, args)
+        ret['rewards'] = torch.tensor(rewards)
+        ret['weights'] = torch.tensor(weights)
+        ret['lm_mask'] = torch.tensor(lm_mask)
+        return ret
+
+    
+    return collator
 
 
 class OfflinePPOTrainer(BaseLLMTrainer):

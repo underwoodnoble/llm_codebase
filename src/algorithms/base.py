@@ -3,12 +3,12 @@ from copy import deepcopy
 from collections import defaultdict
 from contextlib import contextmanager
 
-from datasets import Dataset
 import torch
+import deepspeed
+from datasets import Dataset
 from torch import nn
 from transformers import (Trainer, PreTrainedModel,
     PreTrainedTokenizerBase, TrainerCallback, EvalPrediction)
-import deepspeed
 from peft import PeftModel
 
 from .utils import IGNORE_INDEX, FixedKLController, AdaptiveKLController

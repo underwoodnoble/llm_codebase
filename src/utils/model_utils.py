@@ -7,8 +7,8 @@ import torch
 from .general_utils import print_rank_0
 from ..arguments import GenericTrainingArguments
 from src.algorithms.base import BaseTrainer
-from src.collator import sft_data_collator, offline_ppo_data_collator
-from src.algorithms import SFTTrainer, OfflinePPOTrainer
+from src.collator import offline_ppo_data_collator
+from src.algorithms import SFTTrainer, OfflinePPOTrainer, RMTrainer, sft_data_collator, offline_ppo_data_collator, rm_data_collator
 
 
 def set_special_tokens(tokenizer: PreTrainedTokenizer, model: PreTrainedModel) -> None:
@@ -59,14 +59,14 @@ def load_causal_lm(
         trust_remote_code=True
         )
         model = AutoModelForCausalLM.from_pretrained(
-            training_args.model_name_or_path,
+            model_name_or_path,
             trust_remote_code=True
         )
         set_special_tokens(tokenizer, model) 
         return tokenizer, model
 
     print_rank_0(f"Load model from {training_args.model_name_or_path}")
-    tokenizer,model = _load(training_args.model_name_or_path)
+    tokenizer, model = _load(training_args.model_name_or_path)
     if load_ref_model:
         _, ref_model = _load(training_args.ref_model_name_or_path
                             if training_args.ref_model_name_or_path else training_args.model_name_or_path)
@@ -76,8 +76,35 @@ def load_causal_lm(
     return tokenizer, model, ref_model
 
 
-def load_rm_model(training_args: GenericTrainingArguments):
-    pass
+def load_rm_model(
+    training_args: GenericTrainingArguments,
+    load_ref_model: bool)-> Tuple[PreTrainedTokenizer, PreTrainedModel, Optional[PreTrainedModel]]:
+    from ..models.RewardModel import QwenRewardModel
+    RM_MAP: Dict[str, PreTrainedModel] = {
+        'qwen': QwenRewardModel
+    }
+    
+    def _load(model_name_or_path):
+        tokenizer = AutoTokenizer.from_pretrained(
+            model_name_or_path,
+            truncation_size='left',
+            padding_side='right',
+            trust_remote_code=True
+        )
+        model = RM_MAP[training_args.model_type].from_pretrained(
+            model_name_or_path,
+            trust_remote_code=True
+        )
+        set_special_tokens(tokenizer, model)
+        return tokenizer, model
+    
+    print_rank_0(f"Loading model from {training_args.model_name_or_path}")
+    tokenizer, model = _load(training_args.model_name_or_path)
+    if load_ref_model:
+        _, ref_model = _load(training_args.ref_model_name_or_path if training_args.ref_model_name_or_path else training_args.model_name_or_path)
+    else:
+        ref_model = None
+    return tokenizer, model, ref_model
 
 
 def load_tokenizer_and_model(training_args: GenericTrainingArguments, algorithm: str):
@@ -90,6 +117,12 @@ def load_tokenizer_and_model(training_args: GenericTrainingArguments, algorithm:
             training_args,
             load_ref_model
         )
+    elif algorithm == 'rm':
+        tokenizer, model, ref_model = load_rm_model(
+            training_args,
+            load_ref_model = training_args.kl_coef is not None and training_args.peft_config_path is None
+        )
+
     tokenizer.model_max_length = training_args.model_max_length
 
     return tokenizer, model, ref_model
@@ -98,7 +131,8 @@ def load_tokenizer_and_model(training_args: GenericTrainingArguments, algorithm:
 def get_collator_and_trainer(algorithm) -> Tuple[Callable[[Dict[str, any]], Dict[str, torch.Tensor]], Type[BaseTrainer]]:
     MAP: Dict[str, Tuple[Callable[[Dict[str, any]], Dict[str, torch.Tensor]], Type[BaseTrainer]]] = {
         "sft": (sft_data_collator, SFTTrainer),
-        "offline_ppo": (offline_ppo_data_collator, OfflinePPOTrainer)
+        "offline_ppo": (offline_ppo_data_collator, OfflinePPOTrainer),
+        'rm': (rm_data_collator, RMTrainer)
     }
 
     return MAP[algorithm]

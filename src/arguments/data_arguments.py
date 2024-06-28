@@ -33,7 +33,13 @@ class SFTDataArguments(BaseDataArguments):
 
 @dataclass
 class RMDataArguments(BaseDataArguments):
-    pass
+    text_name: Optional[str] = field(default="texts", metadata={"help": "The field corresponding to texts."})
+    score_name: Optional[str] = field(default="scores", metadata={"help": "The field corresponding to scores."})
+    weight_name: Optional[str] = field(default="weight", metadata={"help": "The field corresponding to weight."})
+    
+    def __post_init__(self):
+
+        super().__post_init__()
 
 
 @dataclass

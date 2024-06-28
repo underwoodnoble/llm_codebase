@@ -1,8 +1,9 @@
-from torch import nn
-import torch
 from typing import Optional, List, Union, Tuple
-from ..utils import RewardModelOutput
+
+import torch
+from torch import nn
 from transformers import Qwen2PreTrainedModel, Qwen2Model, Qwen2Config
+from ..utils import RewardModelOutput
 
 
 class QwenRewardModel(Qwen2PreTrainedModel):
@@ -24,7 +25,7 @@ class QwenRewardModel(Qwen2PreTrainedModel):
 
 
     def get_output_embeddings(self) -> nn.Module:
-        return self.model.get_output_embeddings()
+        return self.lm_head
 
 
     def set_output_embeddings(self, value:nn.Module):

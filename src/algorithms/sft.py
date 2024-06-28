@@ -1,10 +1,11 @@
-from typing import Dict, Any
+from typing import Dict, Any, Callable
 
 import torch
+from transformers import PreTrainedTokenizer
 
 from ..arguments import SFTDataArguments, SFTTrainingArguments
 from .base import BaseLLMTrainer
-from .utils import IGNORE_INDEX
+from .utils import IGNORE_INDEX, llm_tokenize
 from ..utils.general_utils import print_object_on_main_process
 
 
@@ -16,6 +17,24 @@ def sft_transform(data_args: SFTDataArguments):
             "weight": example.get(data_args.weight_name, 1.0)
         }
     return transform
+
+
+def sft_data_collator(tokenizer: PreTrainedTokenizer, args: SFTTrainingArguments) -> Callable[[Dict[str, any]], Dict[str, torch.Tensor]]:
+    def collator(examples) -> Dict[str, torch.Tensor]:
+        texts = []
+        prompts = []
+        weights = []
+        for example in examples:
+            text = example['prompt'] + example['answer']
+            texts.append(text)
+            prompts.append(example['prompt'])
+            weights.append(example['weight'])
+
+        ret = llm_tokenize(prompts, texts, tokenizer, args)
+        ret['weights'] = torch.tensor(weights)
+        return ret
+    
+    return collator
 
 
 class SFTTrainer(BaseLLMTrainer):

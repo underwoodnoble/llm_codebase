@@ -6,8 +6,7 @@ import datasets
 
 from .general_utils import print_rank_0
 from ..arguments import GenericDataArguments
-from src.algorithms.sft import sft_transform
-from src.algorithms.offline_ppo import offline_ppo_transform
+from src.algorithms import sft_transform, offline_ppo_transform, rm_transform
 
 
 def read_json_or_jsonl_data(data_path: str) -> List:
@@ -45,13 +44,15 @@ def load_dataset(data_args: GenericDataArguments, algorithm):
     # transform method
     TRANSFORM_MAP = {
         "sft": sft_transform(data_args),
-        "rm": None,
+        "rm": rm_transform(data_args),
         "offline_ppo": offline_ppo_transform(data_args)
     }
 
     if data_args.data_paths is not None:
         data_files = get_data_files(data_args.data_paths)
         train_dataset = get_datasets(data_files)
+
+        # todo: In datasets 2.20.0, map will keep the original columns, we need to remove them.
         train_dataset = datasets.concatenate_datasets(
             [
                 ds.map(TRANSFORM_MAP[algorithm])
@@ -67,7 +68,7 @@ def load_dataset(data_args: GenericDataArguments, algorithm):
         if data_args.eval_dataset_merge_mode == 'merge':
             eval_dataset = datasets.concatenate_datasets(
                 [
-                    ds.map(TRANSFORM_MAP[algorithm])
+                    ds.map(TRANSFORM_MAP[algorithm], remove_columns=True)
                     for ds in eval_dataset
                 ]
             )

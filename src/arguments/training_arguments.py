@@ -3,7 +3,6 @@ import warnings
 from dataclasses import dataclass, field
 
 import transformers
-from peft import LoraConfig
 
 
 @dataclass
@@ -32,11 +31,13 @@ class BaseTrainingArguments(transformers.TrainingArguments):
         super().__post_init__()
         self.remove_unused_columns = False
 
+
 @dataclass
 class BaseLLMTrainingArguments(BaseTrainingArguments):
     token_level: Optional[bool] = field(default=False, metadata={"help": "Consider each token to be an action."})
     # Todo: Discard this parameter.
     only_predict_answer: Optional[bool] = field(default=True, metadata={"help": "Only calculate the loss of answer."})
+
 
 @dataclass
 class SFTTrainingArguments(BaseLLMTrainingArguments):
@@ -44,9 +45,18 @@ class SFTTrainingArguments(BaseLLMTrainingArguments):
 
 
 @dataclass
-class RMTrainingArguments(BaseTrainingArguments):
-    pass
+class RMTrainingArguments(BaseLLMTrainingArguments):
+    add_lm_loss: Optional[bool] = field(default=False, metadata={"help": "add language model loss when training reward model."})
+    lm_loss_coeff: Optional[float] = field(default=0., metadata={"help": "the coefficient for language modeling loss."})
+    lm_score_thresh: Optional[float] = field(default=0.85, metadata={"help": "the threshold to select response for language modeling."})
+    pooling_type: Optional[str] = field(default='last', metadata={"help": "how to pooling the last hidden states"})
+    rm_calibration: Optional[bool] = field(default=True)
+    calibration_bins: List[int] = field(default_factory=lambda:[5])
 
+    def __post_init__(self):
+        super().__post_init__()
+        if self.pooling_type not in ['last', 'eos', 'average', 'max']:
+            raise ValueError(f"pooling_type must be one of ['last', 'eos', 'average', 'max'], getting '{self.pooling_type}'")
 
 @dataclass
 class OfflinePPOTrainingArguments(BaseLLMTrainingArguments):
