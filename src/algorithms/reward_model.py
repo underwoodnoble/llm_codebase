@@ -68,7 +68,8 @@ class RMTrainer(BaseTrainer):
         score_mask_smaller = (scores.unsqueeze(1) < scores.unsqueeze(2)) * 1.
         score_mask = score_mask_larger - score_mask_smaller
         
-        pad_mask = (scores >= 0).unsqueeze(1) * 1. * (scores >= 0).unsqueeze(2)
+        # padding score is -1
+        pad_mask = (scores > -1).unsqueeze(1) * 1. * (scores > -1).unsqueeze(2)
 
         total_mask = (score_mask_larger + score_mask_smaller) * pad_mask
         
