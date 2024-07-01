@@ -92,13 +92,13 @@ class OfflinePPOTrainer(BaseLLMTrainer):
         if self.args.token_level:
             importance_ratio = (logprobs - ref_logprobs).exp() # (batch_size, seq_len-1)
             cliped_importance_ratio = torch.clip(importance_ratio, 1 - self.args.clip_range, 1 + self.args.clip_range) # (batch_size)
-            rl_loss = -advantage * cliped_importance_ratio # (batch_size, seq_len-1)
+            rl_loss = -torch.minimum(advantage * cliped_importance_ratio, advantage * importance_ratio)# (batch_size, seq_len-1)
             rl_loss = rl_loss.mean(-1) # (batch_size)
         else:
             importance_ratio = (logprobs * mask).sum(-1) / mask.sum(-1) - (ref_logprobs * mask).sum(-1) / mask.sum(-1) # (batch_size)
             importance_ratio = importance_ratio.exp()
             cliped_importance_ratio = torch.clip(importance_ratio, 1 - self.args.clip_range, 1 + self.args.clip_range) # (batch_size)
-            rl_loss = -advantage * cliped_importance_ratio # (batch_size)
+            rl_loss = -torch.minimum(advantage * cliped_importance_ratio, advantage * importance_ratio) # (batch_size)
         rl_loss = (rl_loss * (1 - lm_mask) * weights).sum() / max((1 - lm_mask).sum(), 1)
 
         # Calculate lm loss
