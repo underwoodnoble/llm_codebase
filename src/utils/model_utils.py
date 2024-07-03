@@ -107,10 +107,10 @@ def load_rm_model(
 
 
 def load_tokenizer_and_model(training_args: GenericTrainingArguments, algorithm: str):
-    if algorithm in ['sft', 'offline_ppo']:
+    if algorithm in ['sft', 'offline_ppo', 'dpo']:
         if algorithm == 'sft':
             load_ref_model = training_args.kl_coef is not None and training_args.peft_config_path is None
-        elif algorithm == 'offline_ppo':
+        elif algorithm in ['offline_ppo', 'dpo']:
             load_ref_model = training_args.peft_config_path is None
         tokenizer, model, ref_model = load_causal_lm(
             training_args,
