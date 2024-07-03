@@ -1,6 +1,7 @@
 from typing import Dict, Callable, Tuple, Type
 from transformers import (AutoTokenizer, AutoModelForCausalLM,
     PreTrainedModel, PreTrainedTokenizer)
+from trl import DPOTrainer
 from typing import Tuple, Optional
 import torch
 import torch
@@ -131,7 +132,8 @@ def get_collator_and_trainer(algorithm) -> Tuple[Callable[[Dict[str, any]], Dict
     MAP: Dict[str, Tuple[Callable[[Dict[str, any]], Dict[str, torch.Tensor]], Type[BaseTrainer]]] = {
         "sft": (sft_data_collator, SFTTrainer),
         "offline_ppo": (offline_ppo_data_collator, OfflinePPOTrainer),
-        'rm': (rm_data_collator, RMTrainer)
+        'rm': (rm_data_collator, RMTrainer),
+        'dpo': (lambda x, y: None, DPOTrainer)
     }
 
     return MAP[algorithm]
