@@ -1,8 +1,8 @@
 from typing import Optional, List
-import warnings
 from dataclasses import dataclass, field
 
 import transformers
+from trl import DPOConfig
 
 
 @dataclass
@@ -69,5 +69,5 @@ class OfflinePPOTrainingArguments(BaseLLMTrainingArguments):
 
         
 @dataclass
-class DPOTrainingArguments(BaseLLMTrainingArguments):
+class DPOTrainingArguments(DPOConfig, BaseTrainingArguments):
     pass
