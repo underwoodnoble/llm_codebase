@@ -71,7 +71,7 @@ def load_dataset(data_args: GenericDataArguments, algorithm):
         if data_args.eval_dataset_merge_mode == 'merge':
             eval_dataset = datasets.concatenate_datasets(
                 [
-                    ds.map(TRANSFORM_MAP[algorithm], remove_columns=True)
+                    ds.map(TRANSFORM_MAP[algorithm])
                     for ds in eval_dataset
                 ]
             )
