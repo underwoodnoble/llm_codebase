@@ -52,3 +52,13 @@ class OfflinePPODataArguments(BaseDataArguments):
     
     def __post_init__(self):
         return super().__post_init__()
+
+        
+@dataclass
+class DPODataArguments(BaseDataArguments):
+    prompt_name: Optional[str] = field(default="prompt", metadata={"help": "The field corresponding to prompt."})
+    chosen_name: Optional[str] = field(default="chosen", metadata={"help": "the field corresponding to chosen response."})
+    rejected_name: Optional[str] = field(default="rejected", metadata={"help": "the field corresponding to rejected response."})
+
+    def __post_init__(self):
+        return super().__post_init__()

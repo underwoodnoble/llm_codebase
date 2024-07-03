@@ -2,7 +2,7 @@ import argparse
 import sys
 from transformers import HfArgumentParser
 from ..arguments import (SFTTrainingArguments, SFTDataArguments, RMDataArguments, RMTrainingArguments,
-    OfflinePPODataArguments, OfflinePPOTrainingArguments)
+    OfflinePPODataArguments, OfflinePPOTrainingArguments, DPODataArguments, DPOTrainingArguments)
 from .general_utils import print_object_on_main_process
 
 
@@ -15,6 +15,7 @@ def get_args():
     subparsers.add_parser('sft', help="Using SFT parser")
     subparsers.add_parser('rm', help="Using RM parser")
     subparsers.add_parser('offline_ppo', help="Using offline ppo parser")
+    subparsers.add_parser('dpo', help="Using DPO parser")
 
     supported_algorithms = list(subparsers.choices.keys())
     # Some distributed training frameworks add additional argumes.
@@ -35,5 +36,7 @@ def get_args():
         subparser = HfArgumentParser((RMTrainingArguments, RMDataArguments))
     elif algorithm_args.algorithm == 'offline_ppo':
         subparser = HfArgumentParser((OfflinePPOTrainingArguments, OfflinePPODataArguments))
+    elif algorithm_args.algorithm == 'dpo':
+        subparser = HfArgumentParser((DPOTrainingArguments, DPODataArguments))
 
     return algorithm_args.algorithm, subparser.parse_args_into_dataclasses(sys.argv[1:])

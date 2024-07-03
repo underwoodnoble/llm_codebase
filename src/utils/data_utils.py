@@ -6,7 +6,7 @@ import datasets
 
 from .general_utils import print_rank_0
 from ..arguments import GenericDataArguments
-from src.algorithms import sft_transform, offline_ppo_transform, rm_transform
+from src.algorithms import sft_transform, offline_ppo_transform, rm_transform, dpo_transform
 
 
 def read_json_or_jsonl_data(data_path: str) -> List:
@@ -31,8 +31,10 @@ def load_dataset(data_args: GenericDataArguments, algorithm):
             if data_path.is_dir():
                 all_data_paths.extend(get_data_files(list(data_path.iterdir())))
             else:
-                if data_path.suffix in ['.json', '.jsonl']:
+                if data_path.suffix == '.json':
                     all_data_paths.append(str(data_path))
+                else:
+                    raise ValueError("Only support json format dataset.")
         return all_data_paths
 
     def get_datasets(data_files: List[str]) -> List[datasets.Dataset]:
@@ -45,7 +47,8 @@ def load_dataset(data_args: GenericDataArguments, algorithm):
     TRANSFORM_MAP = {
         "sft": sft_transform(data_args),
         "rm": rm_transform(data_args),
-        "offline_ppo": offline_ppo_transform(data_args)
+        "offline_ppo": offline_ppo_transform(data_args),
+        "dpo": dpo_transform(data_args)
     }
 
     if data_args.data_paths is not None:
@@ -76,5 +79,7 @@ def load_dataset(data_args: GenericDataArguments, algorithm):
             eval_dataset = {
                 Path(data_file).stem: ds.map(TRANSFORM_MAP[algorithm]) for data_file, ds in zip(data_files, eval_dataset)
             }
+    else:
+        eval_dataset = None
 
     return train_dataset, eval_dataset

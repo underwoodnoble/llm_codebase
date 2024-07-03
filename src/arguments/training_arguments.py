@@ -66,3 +66,8 @@ class OfflinePPOTrainingArguments(BaseLLMTrainingArguments):
 
     def __post_init__(self):
         super().__post_init__()
+
+        
+@dataclass
+class DPOTrainingArguments(BaseLLMTrainingArguments):
+    pass
