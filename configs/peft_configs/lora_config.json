@@ -1,7 +1,10 @@
 {
-    "task_type": "SEQ_CLS",
-    "inference_mode": false,
-    "r": 8,
-    "lora_alpha": 32,
-    "lora_dropout": 0.1
+    "type": "lora",
+    "config": {
+        "task_type": "CAUSAL_LM",
+        "target_modules": ["q_proj", "v_proj"],
+        "r": 16,
+        "lora_alpha": 32,
+        "lora_dropout": 0.05
+    }
 }

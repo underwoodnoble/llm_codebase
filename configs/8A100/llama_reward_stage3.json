@@ -13,7 +13,9 @@
         "type": "WarmupDecayLR",
         "params": {
             "total_num_steps": "auto",
-            "warmup_num_steps": "auto"
+            "warmup_num_steps": "auto",
+            "warmup_min_lr": "auto",
+            "warmup_max_lr": "auto"
         }
     },
 
@@ -29,12 +31,12 @@
         },
         "overlap_comm": true,
         "contiguous_gradients": true,
-        "sub_group_size": 7e9,
+        "sub_group_size": 1e9,
         "reduce_bucket_size": "auto",
         "stage3_prefetch_bucket_size": "auto",
         "stage3_param_persistence_threshold": "auto",
-        "stage3_max_live_parameters": 7e9,
-        "stage3_max_reuse_distance": 7e9,
+        "stage3_max_live_parameters": 1e9,
+        "stage3_max_reuse_distance": 1e9,
         "stage3_gather_16bit_weights_on_model_save": true
     },
 

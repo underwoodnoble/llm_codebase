@@ -17,3 +17,4 @@ fastapi
 sse-starlette
 matplotlib
 deepspeed==0.13.1
+trl==0.8.1

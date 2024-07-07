@@ -1,14 +1,15 @@
-from ..BaseModel.Qwen import QWenModel, QWenPreTrainedModel, QWenConfig
-from torch import nn
-import torch
 from typing import Optional, List, Union, Tuple
+
+import torch
+from torch import nn
+from transformers import Qwen2PreTrainedModel, Qwen2Model, Qwen2Config
 from ..utils import RewardModelOutput
 
 
-class QwenRewardModel(QWenPreTrainedModel):
-    def __init__(self, config: QWenConfig):
+class QwenRewardModel(Qwen2PreTrainedModel):
+    def __init__(self, config: Qwen2Config):
         super().__init__(config)
-        self.transformer = QWenModel(config)
+        self.model = Qwen2Model(config)
         self.rm_head = nn.Linear(config.hidden_size, 1, bias=False)
         self.lm_head = nn.Linear(config.hidden_size, config.vocab_size, bias=False)
 
@@ -16,15 +17,15 @@ class QwenRewardModel(QWenPreTrainedModel):
 
 
     def get_input_embeddings(self) -> nn.Module:
-        return self.transformer.get_input_embeddings()
+        return self.model.get_input_embeddings()
 
 
     def set_input_embeddings(self, value: nn.Module):
-        return self.transformer.set_input_embeddings(value)
+        return self.model.set_input_embeddings(value)
 
 
     def get_output_embeddings(self) -> nn.Module:
-        return self.transformer.get_output_embeddings()
+        return self.lm_head
 
 
     def set_output_embeddings(self, value:nn.Module):
@@ -55,7 +56,7 @@ class QwenRewardModel(QWenPreTrainedModel):
 
         return_dict = return_dict if return_dict is not None else self.config.use_return_dict
 
-        transformer_outputs = self.transformer(
+        transformer_outputs = self.model(
             input_ids,
             attention_mask=attention_mask,
             position_ids=position_ids,

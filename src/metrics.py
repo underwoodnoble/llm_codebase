@@ -1,7 +1,7 @@
 from transformers import EvalPrediction
 import torch
 import numpy as np
-from .utils import print_rank_0
+from .utils.general_utils import print_rank_0
 from .test import compute_ece
 from torch.nn.functional import sigmoid
 
