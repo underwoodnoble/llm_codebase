@@ -10,12 +10,12 @@
     },
 
     "scheduler": {
-        "type": "WarmupCosineLR",
+        "type": "WarmupDecayLR",
         "params": {
             "total_num_steps": "auto",
-            "warmup_min_ratio": 0.1,
             "warmup_num_steps": "auto",
-            "cos_min_ratio": 0.1
+            "warmup_min_lr": "auto",
+            "warmup_max_lr": "auto"
         }
     },
 
