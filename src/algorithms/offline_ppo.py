@@ -77,7 +77,6 @@ class OfflinePPOTrainer(BaseLLMTrainer):
         shift_ref_logits = ref_model_outputs.logits[:, :-1, :]
         mask = torch.ne(shift_labels, IGNORE_INDEX)
         
-        
         # kl_divergence: (batch_size, seq_len-1) if token_level else (batch_size)
         kl_divergence = self.compute_kl_divergence(model_outputs.logits.detach(), ref_model_outputs.logits, inputs['labels'])
 
@@ -91,22 +90,23 @@ class OfflinePPOTrainer(BaseLLMTrainer):
             importance_ratio = (logprobs - ref_logprobs).exp() # (batch_size, seq_len-1)
             cliped_importance_ratio = torch.clip(importance_ratio, 1 - self.args.clip_range, 1 + self.args.clip_range) # (batch_size)
             rl_loss = - torch.minimum(advantage * cliped_importance_ratio, advantage * importance_ratio) # (batch_size, seq_len-1)
-            rl_loss = (rl_loss * mask).sum(-1) / mask.sum(-1) # (batch_size)
+            rl_loss = (rl_loss * mask).sum(-1) / max(mask.sum(-1), 1) # (batch_size)
         else:
-            importance_ratio = (logprobs * mask).sum(-1) / mask.sum(-1) - (ref_logprobs * mask).sum(-1) / mask.sum(-1) # (batch_size)
+            importance_ratio = ((logprobs * mask).sum(-1)  - (ref_logprobs * mask).sum(-1)) / max(1, mask.sum(-1)) # (batch_size)
             importance_ratio = importance_ratio.exp()
             cliped_importance_ratio = torch.clip(importance_ratio, 1 - self.args.clip_range, 1 + self.args.clip_range) # (batch_size)
             rl_loss = -torch.minimum(advantage * cliped_importance_ratio, advantage * importance_ratio) # (batch_size)
         rl_loss = (rl_loss * (1 - lm_mask) * weights).sum() / max((1 - lm_mask).sum(), 1)
 
         # Calculate lm loss
-        lm_loss = -(logprobs * mask).sum(-1) / mask.sum(-1)
+        lm_loss = -(logprobs * mask).sum(-1) / max(mask.sum(-1), 1)
         lm_loss = (lm_loss * lm_mask * weights).sum() / max(lm_mask.sum(), 1)
 
         loss = rl_loss + self.args.lm_coef * lm_loss
         # log
         if self.args.debug_mode:
             print_object_on_main_process('model_output', model_outputs.logits)
+            print_object_on_main_process('model_output_max_logtis', model_outputs.logits.max())
             print_object_on_main_process('kl_divergence', kl_divergence)
             print_object_on_main_process('importance_ratio', importance_ratio)
             print_object_on_main_process('cliped_importance_ratio', cliped_importance_ratio)

@@ -211,5 +211,5 @@ class BaseLLMTrainer(BaseTrainer):
                 print_object_on_main_process('shift_labels', shift_labels)
                 print_object_on_main_process('logprobs', logprobs)
                 print_object_on_main_process('ref_logprobs', ref_logprobs)
-            return (logprobs * mask).sum(-1) / mask.sum(-1) - (ref_logprobs * mask).sum(-1) / mask.sum(-1)
+            return (logprobs * mask).sum(-1) / max(mask.sum(-1), 1) - (ref_logprobs * mask).sum(-1) / max(mask.sum(-1), 1)
         
