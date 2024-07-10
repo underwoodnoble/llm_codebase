@@ -56,6 +56,7 @@ def load_dataset(data_args: GenericDataArguments, algorithm):
         train_dataset = get_datasets(data_files)
 
         # todo: In datasets 2.20.0, map will keep the original columns, we need to remove them.
+        # Attention: make sure that all of the dataset have the same type on the corresponding field.
         train_dataset = datasets.concatenate_datasets(
             [
                 ds.map(TRANSFORM_MAP[algorithm])

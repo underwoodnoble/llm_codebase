@@ -6,12 +6,22 @@ from transformers import Qwen2PreTrainedModel, Qwen2Model, Qwen2Config
 from ..utils import RewardModelOutput
 
 
+class QwenRewardModelConfig(Qwen2Config):
+    def __init__(self, create_lm_head=False, **kwargs):
+        super().__init__(**kwargs)
+        self.create_lm_head = create_lm_head
+
+
 class QwenRewardModel(Qwen2PreTrainedModel):
-    def __init__(self, config: Qwen2Config):
+    def __init__(self, config: QwenRewardModelConfig):
         super().__init__(config)
         self.model = Qwen2Model(config)
         self.rm_head = nn.Linear(config.hidden_size, 1, bias=False)
-        self.lm_head = nn.Linear(config.hidden_size, config.vocab_size, bias=False)
+        self.config = config
+        if config.create_lm_head:
+            self.lm_head = nn.Linear(config.hidden_size, config.vocab_size, bias=False)
+        else:
+            self.lm_head = None
 
         self.post_init()
 
@@ -69,7 +79,10 @@ class QwenRewardModel(Qwen2PreTrainedModel):
         )
         last_hidden_state = transformer_outputs.last_hidden_state
 
-        lm_logits = self.lm_head(last_hidden_state)
+        if self.config.create_lm_head:
+            lm_logits = self.lm_head(last_hidden_state)
+        else:
+            lm_logits = None
 
         if input_ids is not None:
             batch_size = input_ids.shape[0]

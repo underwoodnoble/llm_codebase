@@ -105,6 +105,8 @@ class BaseTrainer(Trainer):
         """
         logp = nn.functional.log_softmax(logits, dim=2)
 
+        print_object_on_main_process('logp', logp)
+
         if not gather:
             return logp
         mask = torch.not_equal(labels, IGNORE_INDEX)
@@ -204,5 +206,10 @@ class BaseLLMTrainer(BaseTrainer):
         # calculate sentence level kl
             logprobs = self.logprobs_from_logits(shift_logits, shift_labels) # (batch_size, seq_len-1)
             ref_logprobs = self.logprobs_from_logits(shift_ref_logits, shift_labels) # (batch_size, seq_len-1)
+            if self.args.debug_mode:
+                print_object_on_main_process('shift_logits', shift_logits)
+                print_object_on_main_process('shift_labels', shift_labels)
+                print_object_on_main_process('logprobs', logprobs)
+                print_object_on_main_process('ref_logprobs', ref_logprobs)
             return (logprobs * mask).sum(-1) / mask.sum(-1) - (ref_logprobs * mask).sum(-1) / mask.sum(-1)
         
