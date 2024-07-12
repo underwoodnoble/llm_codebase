@@ -22,6 +22,7 @@ class InferenceConfig(BaseModel):
     task_type: str = Field(default='rm')
     batch_size_per_process: int = Field(default=1)
     model_max_length: int = Field(default=512)
+    generation_config_path: str = Field(default=None)
     dtype: str = Field(default='fp16')
 
     @staticmethod
@@ -67,22 +68,12 @@ class InferenceConfig(BaseModel):
         chunck_size = (len(dataset) + 1) // chuncks
         new_input_files = []
         for i, offset in enumerate(range(0, len(dataset), chunck_size)):
-            file_path = Path(save_dir) / f'input_rank_{i}.json'
+            file_path = Path(save_dir) / f'input_rank_{i}.jsonl'
             with open(file_path, 'w') as f:
                 json.dump(dataset[offset:offset+chunck_size], f, ensure_ascii=False, indent=2)
             new_input_files.append(str(file_path))
         return new_input_files
     
-
-args_template = """
-    --task_type {task_type} 
-    --model_type {model_type} 
-    --model_name_or_path {model_name_or_path} 
-    --input_file_path {input_file_path} 
-    --batch_size {batch_size} 
-    --save_path {save_path} 
-    --dtype {dtype}
-    """
 
 def get_parser():
     parser = ArgumentParser()
@@ -113,6 +104,7 @@ def main(args):
             f'--model_max_length {config.model_max_length}',
             f'--input_file_path {config.input_files[i]}',
             f'--batch_size {config.batch_size_per_process}',
+            f'--generation_config {config.generation_config_path}',
             f'--save_path {save_path}',
             f'--dtype {config.dtype}'
         ]

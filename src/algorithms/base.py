@@ -105,8 +105,6 @@ class BaseTrainer(Trainer):
         """
         logp = nn.functional.log_softmax(logits, dim=2)
 
-        print_object_on_main_process('logp', logp)
-
         if not gather:
             return logp
         mask = torch.not_equal(labels, IGNORE_INDEX)
