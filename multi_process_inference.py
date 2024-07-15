@@ -24,6 +24,7 @@ class InferenceConfig(BaseModel):
     model_max_length: int = Field(default=512)
     generation_config_path: str = Field(default=None)
     dtype: str = Field(default='fp16')
+    add_special_tokens: bool = Field(default=False)
 
     @staticmethod
     def load_config(config_path):
@@ -96,7 +97,7 @@ def main(args):
         env = os.environ.copy()
         env['CUDA_VISIBLE_DEVICES'] = cuda_devices
 
-        save_path = config.save_dir + f'/rank{i}.json'
+        save_path = config.save_dir + f'/rank{i}.jsonl'
         cmd_args = [
             f'--task_type {config.task_type}',
             f'--model_type {config.model_type}',
@@ -106,7 +107,8 @@ def main(args):
             f'--batch_size {config.batch_size_per_process}',
             f'--generation_config {config.generation_config_path}',
             f'--save_path {save_path}',
-            f'--dtype {config.dtype}'
+            f'--dtype {config.dtype}',
+            f'--add_special_tokens {config.add_special_tokens}'
         ]
         cmd_list = ['python', str((Path(__file__).parent / 'accelerate_inference.py'))] + cmd_args
         cmd = ' '.join(cmd_list)
