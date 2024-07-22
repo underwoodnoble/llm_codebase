@@ -56,7 +56,8 @@ def llm_tokenize(prompts: List[str], texts: List[str], tokenizer: PreTrainedToke
             response_start_idx -= 1
         if args.add_special_tokens:
             response_start_idx += 1
-            text_ids = [tokenizer.bos_token_id] + text_ids + [tokenizer.eos_token_id]
+            if tokenizer.bos_token_id: text_ids = [tokenizer.bos_token_id] + text_ids
+            if tokenizer.eos_token_id: text_ids = text_ids + [tokenizer.eos_token_id]
         label = deepcopy(text_ids)
         if args.only_predict_answer:
             label[:response_start_idx] = [IGNORE_INDEX] * response_start_idx

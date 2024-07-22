@@ -1,6 +1,6 @@
 from typing import Dict, Callable, Tuple, Type
 from transformers import (AutoTokenizer, AutoModelForCausalLM,
-    PreTrainedModel, PreTrainedTokenizer)
+    PreTrainedModel, PreTrainedTokenizer, PretrainedConfig)
 from trl import DPOTrainer
 from typing import Tuple, Optional
 import torch
@@ -38,13 +38,12 @@ def set_special_tokens(tokenizer: PreTrainedTokenizer, model: PreTrainedModel) -
 
     if num_new_tokens > 0:
         input_embeddings: torch.Tensor = model.get_input_embeddings().weight.data
-        output_embeddings: torch.Tensor = model.get_output_embeddings().weight.data
-
         input_embeddings_avg = input_embeddings[:-num_new_tokens].mean(dim=0, keepdim=True)
-        output_embeddings_avg = output_embeddings[:-num_new_tokens].mean(dim=0, keepdim=True)
-
         input_embeddings[-num_new_tokens:] = input_embeddings_avg
-        output_embeddings[-num_new_tokens:] = output_embeddings_avg
+        if model.get_output_embeddings() is not None:
+            output_embeddings: torch.Tensor = model.get_output_embeddings().weight.data
+            output_embeddings_avg = output_embeddings[:-num_new_tokens].mean(dim=0, keepdim=True)
+            output_embeddings[-num_new_tokens:] = output_embeddings_avg
 
 
 def load_causal_lm(
@@ -79,9 +78,12 @@ def load_causal_lm(
 def load_rm_model(
     training_args: GenericTrainingArguments,
     load_ref_model: bool)-> Tuple[PreTrainedTokenizer, PreTrainedModel, Optional[PreTrainedModel]]:
-    from ..models.RewardModel import QwenRewardModel
+    from ..models.RewardModel import QwenRewardModel, QwenRewardModelConfig
     RM_MAP: Dict[str, PreTrainedModel] = {
         'qwen': QwenRewardModel
+    }
+    CONFIG_MAP: Dict[str, PretrainedConfig] = {
+        'qwen': QwenRewardModelConfig
     }
     
     def _load(model_name_or_path):
@@ -91,9 +93,11 @@ def load_rm_model(
             padding_side='right',
             trust_remote_code=True
         )
+        config = QwenRewardModelConfig.from_pretrained(model_name_or_path)
         model = RM_MAP[training_args.model_type].from_pretrained(
             model_name_or_path,
-            trust_remote_code=True
+            trust_remote_code=True,
+            config=config
         )
         set_special_tokens(tokenizer, model)
         return tokenizer, model

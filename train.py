@@ -64,10 +64,14 @@ def main(
     # Operation after training
     ## save model
     trainer.save_model(output_dir=training_args.output_dir)
+
+    ## final evaluation
+    if eval_dataset is not None:
+        trainer.evaluate(eval_dataset)
+
     ## save log history
     with open(os.path.join(training_args.output_dir, 'log_history.txt'), 'w') as f:
         json.dump(trainer.state.log_history, f)
-
 
 if __name__ == '__main__':
     algorithm, (training_args, data_args) = get_args()
