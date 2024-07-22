@@ -76,19 +76,21 @@ def reward_model_inference(dataset: List, tokenizer: PreTrainedTokenizer, model:
 
     rewards = []
     for i in range(0, len(all_texts), args.batch_size):
+        batch_texts = all_texts[i:i+args.batch_size]
         if args.add_special_tokens:
             bos_token = tokenizer.bos_token if tokenizer.bos_token else ""
             eos_token = tokenizer.eos_token if tokenizer.eos_token else tokenizer.pad_token
 
         texts = []
-        for j in range(args.batch_size):
-            texts.extend(bos_token + text + eos_token for text in all_texts[i + j])
+        for ts in batch_texts:
+            texts.extend(bos_token + text + eos_token for text in ts)
 
         encoding = tokenizer(texts, return_tensors='pt', padding=True, truncation=True, add_special_tokens=False)
         rewards = model(input_ids=encoding['input_ids'].to(model.device)).rm_logits.flatten().tolist()
 
-        num_of_text_per_example = len(rewards) // args.batch_size
-        for j in range(args.batch_size):
+        num_of_text_per_example = len(all_texts[0])
+
+        for j in range(len(batch_texts)):
             data = dataset[i + j]
             data['rewards'] = rewards[j*num_of_text_per_example:(j+1)*num_of_text_per_example]
             with open(args.save_path, 'a') as f:
