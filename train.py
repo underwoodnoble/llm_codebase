@@ -59,15 +59,17 @@ def main(
     # Operation before training
     
     # Train
-    trainer.train()
+    if training_args.do_train:
+        trainer.train()
     
-    # Operation after training
-    ## save model
-    trainer.save_model(output_dir=training_args.output_dir)
+        # Operation after training
+        ## save model
+        trainer.save_model(output_dir=training_args.output_dir)
 
     ## final evaluation
     if eval_dataset is not None:
-        trainer.evaluate(eval_dataset)
+        eval_result = trainer.evaluate(eval_dataset)
+        print_object_on_main_process('eval_result', eval_result)
 
     ## save log history
     with open(os.path.join(training_args.output_dir, 'log_history.txt'), 'w') as f:
