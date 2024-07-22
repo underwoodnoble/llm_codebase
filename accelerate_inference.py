@@ -67,30 +67,32 @@ def load_json_or_jsonl(file_path: str):
 
 
 @torch.no_grad()
-def reward_model_inference(dataset: List, tokenizer: PreTrainedTokenizer, model: PreTrainedModel, batch_size: int, save_path: str, add_special_tokens=False):
+def reward_model_inference(dataset: List, tokenizer: PreTrainedTokenizer, model: PreTrainedModel, args):
+    all_texts = []
     for data in dataset:
-        if 'prompt' in data:
-            texts = [
-                data['prompt'] + data['answers'][i] for i in range(len(data['answers']))
-            ]
-        elif 'text' in data:
-            texts = data['text']
-        elif 'texts' in data:
-            texts = data['texts']
-        else:
-            print(data)
-            raise ValueError("wrong data!")
+        all_texts.append([
+            data[args.prompt_field_name] + answer for answer in data[args.answers_field_name]
+        ])
 
-        rewards = []
-        for i in range(0, len(texts), batch_size):
-            encoding = tokenizer(texts[i:i+batch_size], return_tensors='pt', padding=True, truncation=True, add_special_tokens=add_special_tokens)
-            rewards.extend(
-                model(input_ids=encoding['input_ids'].to(model.device)).rm_logits.flatten().tolist()
-            )
-        
-        data['rewards'] = rewards
-        with open(save_path, 'a') as f:
-            f.write(json.dumps(data, ensure_ascii=False) + '\n')
+    rewards = []
+    for i in range(0, len(all_texts), args.batch_size):
+        if args.add_special_tokens:
+            bos_token = tokenizer.bos_token if tokenizer.bos_token else ""
+            eos_token = tokenizer.eos_token if tokenizer.eos_token else tokenizer.pad_token
+
+        texts = []
+        for j in range(args.batch_size):
+            texts.extend(bos_token + text + eos_token for text in all_texts[i + j])
+
+        encoding = tokenizer(texts, return_tensors='pt', padding=True, truncation=True, add_special_tokens=False)
+        rewards = model(input_ids=encoding['input_ids'].to(model.device)).rm_logits.flatten().tolist()
+
+        num_of_text_per_example = len(rewards) // args.batch_size
+        for j in range(args.batch_size):
+            data = dataset[i + j]
+            data['rewards'] = rewards[j*num_of_text_per_example:(j+1)*num_of_text_per_example]
+            with open(args.save_path, 'a') as f:
+                f.write(json.dumps(data, ensure_ascii=False) + '\n')
 
 
 @torch.no_grad()
@@ -136,7 +138,7 @@ def main(args):
             model = QwenRewardModel.from_pretrained(args.model_name_or_path, device_map='auto', torch_dtype=TYPE_MAP[args.dtype])
         
         model.eval()
-        reward_model_inference(dataset, tokenizer, model, args.batch_size, args.save_path, args.add_special_tokens)
+        reward_model_inference(dataset, tokenizer, model, args)
     elif args.task_type == 'llm':
         tokenizer.padding_side = 'left'
         tokenizer.truncation_side = 'left'
