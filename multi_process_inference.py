@@ -1,6 +1,7 @@
 import os
 import subprocess
 import json
+import math
 
 from typing import List
 from pathlib import Path
@@ -58,7 +59,7 @@ class InferenceArguments(TrainingArguments):
     def split(self, dataset):
         if  dist.get_rank() == 0 and (not os.path.exists(self.output_dir)):
             os.makedirs(self.output_dir)
-        chunck_size = (len(dataset) + 1) // dist.get_world_size()
+        chunck_size = math.ceil(len(dataset) / dist.get_world_size())
 
         new_input_files = []
         for i, offset in enumerate(range(0, len(dataset), chunck_size)):
