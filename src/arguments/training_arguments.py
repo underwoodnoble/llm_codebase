@@ -62,8 +62,6 @@ class RMTrainingArguments(BaseLLMTrainingArguments):
 class OfflinePPOTrainingArguments(BaseLLMTrainingArguments):
     clip_range: float = field(default=0.2)
     lm_coef: float = field(default=0.5)
-    reward_normalize: bool = field(default=True)
-
 
     def __post_init__(self):
         super().__post_init__()

@@ -139,7 +139,7 @@ def main(args: InferenceArguments):
     
     for process in processes:
         process.wait()
-    torch.cuda.synchronize()
+    dist.barrier()
     args.save_final_results()
 
 

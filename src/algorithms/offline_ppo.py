@@ -41,10 +41,6 @@ def offline_ppo_data_collator(
 
         ret = llm_tokenize(prompts, texts, tokenizer, args)
         ret['rewards'] = torch.tensor(rewards)
-        if args.reward_normalize:
-            mean = ret['rewards'].mean()
-            std = ret['rewards'].std()
-            ret['rewards'] = (ret['rewards'] - mean) / max(std, 1e-6)
         ret['weights'] = torch.tensor(weights)
         ret['lm_mask'] = torch.tensor(lm_mask)
         return ret
