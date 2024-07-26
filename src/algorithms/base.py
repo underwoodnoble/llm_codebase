@@ -10,6 +10,7 @@ from torch import nn
 from transformers import (Trainer, PreTrainedModel,
     PreTrainedTokenizerBase, TrainerCallback, EvalPrediction)
 from peft import PeftModel
+from accelerate.utils import gather_object
 
 from .utils import IGNORE_INDEX, FixedKLController, AdaptiveKLController
 from ..arguments.training_arguments import BaseTrainingArguments, BaseLLMTrainingArguments
@@ -72,8 +73,10 @@ class BaseTrainer(Trainer):
     def _prepare_deepspeed(self, model: PreTrainedModel):
         deepspeed_plugin = self.accelerator.state.deepspeed_plugin
         config_kwargs = deepcopy(deepspeed_plugin.deepspeed_config)
-        del config_kwargs['optimizer']
-        del config_kwargs['scheduler']
+        if hasattr(config_kwargs, 'optimizer'):
+            del config_kwargs['optimizer']
+        if hasattr(config_kwargs, 'scheduler'):
+            del config_kwargs['scheduler']
 
         if model is not None:
             if hasattr(model, "config"):

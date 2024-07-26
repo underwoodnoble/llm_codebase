@@ -113,24 +113,25 @@ class OfflinePPOTrainer(BaseLLMTrainer):
             print_object_on_main_process('rl_loss', rl_loss)
             print_object_on_main_process('lm_loss', lm_loss)
         train_eval = 'train' if model.training else 'eval'
-        self.store_metrics({"kl": kl_divergence.mean().item()}, train_eval)
-        self.store_metrics({"kl_coef": self.kl_contorller.value}, train_eval)
         positive_mask = (rewards > 0) * (1 - lm_mask)
         negative_mask = (rewards < 0) * (1 - lm_mask)
         
         if self.args.debug_mode:
             print(f"rewards: {rewards}  ", f"lm_mask: {lm_mask}  ", f"postive_mask: {positive_mask}  ", f"negative_mask: {negative_mask}")
 
-        if positive_mask.any():
-            self.store_metrics({"kl_positive": (kl_divergence * positive_mask).sum() / positive_mask.sum()})
-        if negative_mask.any():
-            self.store_metrics({"kl_negative": (kl_divergence * negative_mask).sum() / negative_mask.sum()})
-        if (1 - lm_mask).any():
-            self.store_metrics({"rl_loss": rl_loss})
-        if lm_mask.any():
-            self.store_metrics({"kl_lm": (kl_divergence * lm_mask).sum() / lm_mask.sum()})
-            self.store_metrics({"lm_loss": lm_loss})
-        
+        kl_positive = (kl_divergence * positive_mask).sum() / max(positive_mask.sum(), 1)
+        kl_negative = (kl_divergence * negative_mask).sum() / max(negative_mask.sum(), 1)
+        kl_lm = (kl_divergence * lm_mask).sum() / max(lm_mask.sum(), 1)
+
+        # store metrics
+        self.store_metrics({"kl_positive": self.accelerator.gather(kl_positive).mean().item()})
+        self.store_metrics({"kl_negative": self.accelerator.gather(kl_negative).mean().item()})
+        self.store_metrics({"rl_loss": self.accelerator.gather(rl_loss).mean().item()})
+        self.store_metrics({"kl_lm": self.accelerator.gather(kl_lm).mean().item()})
+        self.store_metrics({"lm_loss": self.accelerator.gather(lm_loss).mean().item()})
+        self.store_metrics({"kl": self.accelerator.gather(kl_divergence).mean().item()}, train_eval)
+        self.store_metrics({"kl_coef": self.kl_contorller.value}, train_eval)
+       
         # store current kl
         self.kl_step_buffer.append(kl_divergence.mean().item())
 
