@@ -3,6 +3,7 @@ from dataclasses import dataclass, field
 
 import transformers
 from trl import DPOConfig
+from trl.trainer.ppov2_config import PPOv2Config
 
 
 @dataclass
@@ -70,3 +71,9 @@ class OfflinePPOTrainingArguments(BaseLLMTrainingArguments):
 @dataclass
 class DPOTrainingArguments(DPOConfig, BaseTrainingArguments):
     pass
+
+
+@dataclass
+class PPOv2TrainingArguments(PPOv2Config, BaseTrainingArguments):
+    share_backbone_between_policy_and_value: bool = field(default=True)
+    rm_type: str = field(default='qwen', metadata={'help': "reward model type"})

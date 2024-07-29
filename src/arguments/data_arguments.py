@@ -34,6 +34,11 @@ class SFTDataArguments(BaseDataArguments):
 @dataclass
 class RMDataArguments(BaseDataArguments):
     text_name: Optional[str] = field(default="texts", metadata={"help": "The field corresponding to texts."})
+
+    prompt_name: Optional[str] = field(default='prompt', metadata={"help": "The field corresponding to prompt. This parameter is valid when there is no text field"})
+    chosen_name: Optional[str] = field(default='chosen', metadata={"help": "The field corresponding to chosen response. This parameter is valid when there is no text field"})
+    rejected_name: Optional[str] = field(default='rejected', metadata={"help": "The field corresponding to rejected response. This parameter is valid when there is no text field"})
+
     score_name: Optional[str] = field(default="scores", metadata={"help": "The field corresponding to scores."})
     weight_name: Optional[str] = field(default="weight", metadata={"help": "The field corresponding to weight."})
     
@@ -57,8 +62,16 @@ class OfflinePPODataArguments(BaseDataArguments):
 @dataclass
 class DPODataArguments(BaseDataArguments):
     prompt_name: Optional[str] = field(default="prompt", metadata={"help": "The field corresponding to prompt."})
-    chosen_name: Optional[str] = field(default="chosen", metadata={"help": "the field corresponding to chosen response."})
-    rejected_name: Optional[str] = field(default="rejected", metadata={"help": "the field corresponding to rejected response."})
+    chosen_name: Optional[str] = field(default="chosen", metadata={"help": "The field corresponding to chosen response."})
+    rejected_name: Optional[str] = field(default="rejected", metadata={"help": "The field corresponding to rejected response."})
+
+    def __post_init__(self):
+        return super().__post_init__()
+
+        
+@dataclass
+class PPOv2DataArguments(BaseDataArguments):
+    prompt_name: Optional[str] = field(default='prompt', metadata={"help": "The field corresponding to prompt."})
 
     def __post_init__(self):
         return super().__post_init__()

@@ -13,9 +13,18 @@ from ..utils.general_utils import print_object_on_main_process
 
 def rm_transform(data_args: RMDataArguments):
     def transform(example: Dict[str, Any]):
+        if data_args.text_name in example:
+            texts = example[data_args.text_name]
+            scores = example[data_args.score_name]
+        else:
+            texts = [
+                example[data_args.prompt_name] + example[data_args.chosen_name],
+                example[data_args.prompt_name] + example[data_args.rejected_name]
+            ]
+            scores = [1, 0]
         return {
-            "texts": example[data_args.text_name],
-            "scores": example[data_args.score_name],
+            "texts": texts,
+            "scores": scores,
             "weight": example.get(data_args.weight_name, 1.0)
         }
     

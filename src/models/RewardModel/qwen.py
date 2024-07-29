@@ -2,7 +2,7 @@ from typing import Optional, List, Union, Tuple
 
 import torch
 from torch import nn
-from transformers import Qwen2PreTrainedModel, Qwen2Model, Qwen2Config
+from transformers import Qwen2PreTrainedModel, Qwen2Model, Qwen2Config, AutoModelForCausalLM
 from ..utils import RewardModelOutput
 
 
@@ -130,3 +130,7 @@ class QwenRewardModel(Qwen2PreTrainedModel):
         if not return_dict:
             return tuple(v for v in ret.values() if v is not None)
         return RewardModelOutput(**ret)
+    
+    @property
+    def score(self):
+        return self.rm_head
