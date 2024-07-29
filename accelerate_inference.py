@@ -52,6 +52,9 @@ def get_parser():
     parser.add_argument(
         '--add_special_tokens', type=bool, default=False
     )
+    parser.add_argument(
+        '--keep_original_field', type=bool, default=False
+    )
     return parser
 
 
@@ -111,10 +114,14 @@ def llm_inference(dataset: List, tokenizer: PreTrainedTokenizer, model: PreTrain
         with open(args.save_path, 'a') as f:
             for j, prompt in enumerate(prompts[i:i+args.batch_size]):
                 prompt_responses = responses[j*generation_config.num_return_sequences:(j+1)*generation_config.num_return_sequences]
-                f.write(json.dumps({
-                    'prompt': prompt,
-                    "responses": prompt_responses
-                }, ensure_ascii=False) + '\n')
+                if not args.keep_original_field:
+                    f.write(json.dumps({
+                        'prompt': prompt,
+                        "responses": prompt_responses
+                    }, ensure_ascii=False) + '\n')
+                else:
+                    dataset[i + j]['responses'] = prompt_responses
+                    f.write(json.dumps(dataset[i + j], ensure_ascii=False) + '\n')
 
 
 def main(args):

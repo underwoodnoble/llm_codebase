@@ -34,6 +34,7 @@ class InferenceArguments(TrainingArguments):
     generation_config_path: str = field(default=None)
     dtype: str = field(default='fp16')
     add_special_tokens: bool = field(default=False)
+    keep_original_field: bool = field(default=False)
     remove_intermediate_result: bool = field(default=False)
     output_files: List[str] = field(default_factory=lambda :[])
     output_file_name: str = field(default='output.json')
@@ -129,7 +130,8 @@ def main(args: InferenceArguments):
                 f'--generation_config {args.generation_config_path}',
                 f'--save_path {save_path}',
                 f'--dtype {args.dtype}',
-                f'--add_special_tokens {args.add_special_tokens}'
+                f'--add_special_tokens {args.add_special_tokens}',
+                f'--keep_original_field {args.keep_original_field}'
             ]
             cmd_list = ['python', str((Path(__file__).parent / 'accelerate_inference.py'))] + cmd_args
             cmd = ' '.join(cmd_list)

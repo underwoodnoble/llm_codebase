@@ -1,5 +1,6 @@
 import json
 import os
+from copy import deepcopy
 
 from src.utils.args_utils import get_args
 from src.arguments import GenericDataArguments, GenericTrainingArguments
@@ -21,7 +22,7 @@ def main(
     print_object_on_main_process("eval_dataset", eval_dataset)
 
     # Loading Model
-    tokenizer, model, ref_model = load_tokenizer_and_model(training_args, algorithm)
+    tokenizer, model, ref_model, reward_model, value_model = load_tokenizer_and_model(training_args, algorithm)
     print_object_on_main_process("tokenizer", tokenizer)
     print_object_on_main_process("model", model)
 
@@ -38,24 +39,54 @@ def main(
         if training_args.gradient_checkpointing:
             model.enable_input_require_grads()
 
-
-    COLLATOR, TRAINER = get_collator_and_trainer(algorithm)
-    
     compute_metrics = None
     if algorithm == 'rm':
         from src.metrics import compute_reward_metrics
         compute_metrics = lambda x: compute_reward_metrics(training_args, x)
 
-    trainer = TRAINER(
-        model=model,
-        ref_model=ref_model,
-        args=training_args,
-        data_collator=COLLATOR(tokenizer, training_args),
-        train_dataset=train_dataset,
-        eval_dataset=eval_dataset,
-        tokenizer=tokenizer,
-        compute_metrics=compute_metrics
-    )
+    if algorithm != 'ppo_v2':
+        COLLATOR, TRAINER = get_collator_and_trainer(algorithm)
+        trainer = TRAINER(
+            model=model,
+            ref_model=ref_model,
+            args=training_args,
+            data_collator=COLLATOR(tokenizer, training_args),
+            train_dataset=train_dataset,
+            eval_dataset=eval_dataset,
+            tokenizer=tokenizer,
+            compute_metrics=compute_metrics
+        )
+    else:
+        from trl.trainer.ppov2_trainer import PPOv2Trainer
+        # todo: there may have some tokenize problem
+        train_dataset = train_dataset.map(
+            lambda x: {"input_ids": tokenizer(x['prompt'], padding=False)['input_ids']},
+            remove_columns=train_dataset.column_names,
+            batched=True,
+            num_proc=4,
+            load_from_cache_file=False
+        )
+        if eval_dataset is not None:
+            eval_dataset = eval_dataset.map(
+                lambda x: {"input_ids": tokenizer(x['prompt'], padding=False)['input_ids']},
+                remove_columns=eval_dataset.column_names,
+                batched=True,
+                num_proc=4,
+                load_from_cache_file=False
+            )
+        else:
+            eval_dataset = train_dataset
+
+        trainer = PPOv2Trainer(
+            config=training_args,
+            policy=model,
+            ref_policy=ref_model,
+            reward_model=reward_model,
+            value_model=value_model,
+            tokenizer=tokenizer,
+            train_dataset=train_dataset,
+            eval_dataset=eval_dataset,
+        )
     # Operation before training
     
     # Train
