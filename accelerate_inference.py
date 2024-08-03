@@ -38,6 +38,12 @@ def get_parser():
         '--output_field_name', type=str, default='output'
     )
     parser.add_argument(
+        '--chosen_field_name', type=str, default='chosen'
+    )
+    parser.add_argument(
+        '--rejected_field_name', type=str, default='rejected'
+    )
+    parser.add_argument(
         '--batch_size', type=int
     )
     parser.add_argument(
@@ -73,9 +79,15 @@ def load_json_or_jsonl(file_path: str):
 def reward_model_inference(dataset: List, tokenizer: PreTrainedTokenizer, model: PreTrainedModel, args):
     all_texts = []
     for data in dataset:
-        all_texts.append([
-            data[args.prompt_field_name] + answer for answer in data[args.answers_field_name]
-        ])
+        if args.chosen_field_name in data:
+            all_texts.append([
+                data[args.prompt_field_name] + data[args.chosen_field_name],
+                data[args.prompt_field_name] + data[args.rejected_field_name]
+            ])
+        else:
+            all_texts.append([
+                data[args.prompt_field_name] + answer for answer in data[args.answers_field_name]
+            ])
 
     rewards = []
     for i in range(0, len(all_texts), args.batch_size):

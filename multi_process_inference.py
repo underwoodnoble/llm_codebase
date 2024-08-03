@@ -31,6 +31,8 @@ class InferenceArguments(TrainingArguments):
     prompt_field_name: str = field(default='prompt')
     answers_field_name: str = field(default='answers')
     output_field_name: str = field(default='output')
+    chosen_field_name: str = field(default='chosen')
+    rejected_field_name: str = field(default='rejected')
     generation_config_path: str = field(default=None)
     dtype: str = field(default='fp16')
     add_special_tokens: bool = field(default=False)
@@ -42,13 +44,13 @@ class InferenceArguments(TrainingArguments):
 
     def post_initalize(self):
         if len(self.input_files) > 1 or dist.get_world_size() > 1:
-            dataset = self.merge_file()
+            dataset = self.merge_file(self.input_files)
             self.input_files = self.split(dataset)
     
 
-    def merge_file(self):
+    def merge_file(self, input_files):
         all_dataset = []
-        for file_path in self.input_files:
+        for file_path in input_files:
             with open(file_path, 'r') as f:
                 if file_path.endswith('json'):
                     dataset = json.load(f)
@@ -85,10 +87,10 @@ class InferenceArguments(TrainingArguments):
 
     def save_final_results(self):
         if dist.get_rank() == 0:
-            dataset = self.merge_file()
+            dataset = self.merge_file(self.output_files)
             with open(self.output_dir + f'/{self.output_file_name}', 'w') as f:
                 if self.output_file_name.endswith('json'):
-                    json.dump(dataset, f)
+                    json.dump(dataset, f, ensure_ascii=False, indent=2)
                 else:
                     for data in dataset:
                         f.write(json.dumps(data, ensure_ascii=False) + '\n')
@@ -125,6 +127,8 @@ def main(args: InferenceArguments):
                 f'--input_file_path {args.input_files[rank]}',
                 f'--prompt_field_name {args.prompt_field_name}',
                 f'--answers_field_name {args.answers_field_name}',
+                f'--chosen_field_name {args.chosen_field_name}',
+                f'--rejected_field_name {args.rejected_field_name}',
                 f'--output_field_name {args.output_field_name}',
                 f'--batch_size {args.batch_size_per_process}',
                 f'--generation_config {args.generation_config_path}',
