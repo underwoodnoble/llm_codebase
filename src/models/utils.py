@@ -36,6 +36,7 @@ def get_reward_model(base_pretrained_model_class, rm_head_prefix='rm_head') -> P
                 self.lm_head = nn.Linear(config.hidden_size, config.vocab_size, bias=False)
             else:
                 self.lm_head = None
+            self.post_init()
         
 
         def get_input_embeddings(self) -> nn.Module:

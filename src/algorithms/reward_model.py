@@ -21,7 +21,7 @@ def rm_transform(data_args: RMDataArguments):
                 example[data_args.prompt_name] + example[data_args.chosen_name],
                 example[data_args.prompt_name] + example[data_args.rejected_name]
             ]
-            scores = [1, 0]
+            scores = [1.0, 0.0]
         return {
             "texts": texts,
             "scores": scores,

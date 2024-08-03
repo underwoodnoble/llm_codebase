@@ -78,9 +78,14 @@ def load_dataset(data_args: GenericDataArguments, algorithm):
                 ]
             )
         else:
-            eval_dataset = {
-                Path(data_file).stem: ds.map(TRANSFORM_MAP[algorithm]) for data_file, ds in zip(data_files, eval_dataset)
-            }
+            eval_dataset_dict = {}
+            for data_file, ds in zip(data_files, eval_dataset):
+                data_file = Path(data_file)
+                if data_file.stem not in eval_dataset_dict: key = data_file.stem
+                else:
+                    key = str(data_file)
+                eval_dataset_dict[key] = ds.map(TRANSFORM_MAP[algorithm])
+            eval_dataset = eval_dataset_dict
     else:
         eval_dataset = None
 
