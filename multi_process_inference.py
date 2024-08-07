@@ -38,7 +38,6 @@ class InferenceArguments(TrainingArguments):
     add_special_tokens: bool = field(default=False)
     keep_original_field: bool = field(default=False)
     remove_intermediate_result: bool = field(default=False)
-    output_files: List[str] = field(default_factory=lambda :[])
     output_file_name: str = field(default='output.json')
 
 
@@ -52,7 +51,7 @@ class InferenceArguments(TrainingArguments):
         all_dataset = []
         for file_path in input_files:
             with open(file_path, 'r') as f:
-                if file_path.endswith('json'):
+                if str(file_path).endswith('json'):
                     dataset = json.load(f)
                 else:
                     dataset = [json.loads(line) for line in f.readlines()]
@@ -87,7 +86,8 @@ class InferenceArguments(TrainingArguments):
 
     def save_final_results(self):
         if dist.get_rank() == 0:
-            dataset = self.merge_file(self.output_files)
+            output_files = Path(self.output_dir).glob('rank*.jsonl')
+            dataset = self.merge_file(output_files)
             with open(self.output_dir + f'/{self.output_file_name}', 'w') as f:
                 if self.output_file_name.endswith('json'):
                     json.dump(dataset, f, ensure_ascii=False, indent=2)
@@ -99,7 +99,7 @@ class InferenceArguments(TrainingArguments):
                 for file_path in self.input_files:
                     if 'input_rank' in str(file_path):
                         os.remove(file_path)
-                for file_path in self.output_files:
+                for file_path in output_files:
                     os.remove(file_path)
 
 
@@ -116,7 +116,6 @@ def main(args: InferenceArguments):
         env['CUDA_VISIBLE_DEVICES'] = cuda_devices
 
         save_path = args.output_dir + f'/rank{rank}.jsonl'
-        args.output_files.append(save_path)
 
         if local_rank == i:
             cmd_args = [
