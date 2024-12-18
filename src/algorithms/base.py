@@ -146,7 +146,7 @@ class BaseTrainer(Trainer):
                     return self.model(input_ids=input_ids, attention_mask=attention_mask)
             
 
-    def training_step(self, model: nn.Module, inputs: Dict[str, Union[torch.Tensor, Any]]) -> torch.Tensor:
+    def training_step(self, model: nn.Module, inputs: Dict[str, Union[torch.Tensor, Any]], *args, **kwargs) -> torch.Tensor:
         ret = super().training_step(model, inputs)
         if len(self.kl_step_buffer) != 0:
             # calculate current kl

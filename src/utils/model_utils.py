@@ -12,29 +12,25 @@ from src.algorithms import SFTTrainer, OfflinePPOTrainer, RMTrainer, sft_data_co
 
 
 def set_special_tokens(tokenizer: PreTrainedTokenizer, model: PreTrainedModel) -> None:
-    DEFAULT_PAD_TOKEN = "<pad>"
     DEFAULT_EOS_TOKEN = "</s>"
     DEFAULT_BOS_TOKEN = "<s>"
-    DEFAULT_UNK_TOKEN = "<unk>"
     
     special_tokens_dict = dict()
-    if tokenizer.pad_token is None:
-        special_tokens_dict["pad_token"] = DEFAULT_PAD_TOKEN
     if tokenizer.eos_token is None:
         special_tokens_dict["eos_token"] = DEFAULT_EOS_TOKEN
     if tokenizer.bos_token is None:
         special_tokens_dict['bos_token'] = DEFAULT_BOS_TOKEN
-    if tokenizer.unk_token is None:
-        special_tokens_dict["unk_token"] = DEFAULT_UNK_TOKEN
 
     num_new_tokens = tokenizer.add_special_tokens(special_tokens_dict)
     # If not set add_eos_token to True, Llama tokenizer do not add eos token in encoding automatically.
     tokenizer.add_bos_token = True
     tokenizer.add_eos_token = True
+    if tokenizer.pad_token is None:
+        tokenizer.pad_token = tokenizer.eos_token
     model.config.pad_token_id = tokenizer.pad_token_id
     model.config.eos_token_id = tokenizer.eos_token_id
     model.config.bos_token_id = tokenizer.bos_token_id
-    model.resize_token_embeddings(len(tokenizer))
+    model.resize_token_embeddings(max(len(tokenizer), model.config.vocab_size))
 
     if num_new_tokens > 0:
         input_embeddings: torch.Tensor = model.get_input_embeddings().weight.data
